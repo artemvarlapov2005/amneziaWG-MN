@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.view.*
 import android.widget.*
 import androidx.core.widget.doAfterTextChanged
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
@@ -45,7 +47,7 @@ class RoutingFragment : Fragment() {
         val context = requireContext()
         val root = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(12), dp(16), 0) }
         fun label(text: String, size: Float = 14f) = TextView(context).apply { this.text = text; textSize = size; root.addView(this) }
-        label(getString(R.string.mn_routing), 24f)
+        val title = label(getString(R.string.mn_routing), 24f)
         profiles = Spinner(context).also { root.addView(it, LinearLayout.LayoutParams(-1, dp(48))) }
         modes = RadioGroup(context).apply {
             listOf(R.string.mn_route_all, R.string.mn_route_include, R.string.mn_route_exclude).forEachIndexed { i, text ->
@@ -98,7 +100,14 @@ class RoutingFragment : Fragment() {
         root.addView(ListView(context).apply { this.adapter = this@RoutingFragment.adapter; divider = null }, LinearLayout.LayoutParams(-1, 0, 1f))
         save = MaterialButton(context).apply { setText(R.string.mn_route_apply); setOnClickListener { applyRouting() } }
         root.addView(save, LinearLayout.LayoutParams(-1, dp(56)))
-        label(getString(R.string.mn_route_reconnect), 12f)
+        val hint = label(getString(R.string.mn_route_reconnect), 12f)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val visibility = if (insets.isVisible(WindowInsetsCompat.Type.ime())) View.GONE else View.VISIBLE
+            title.visibility = visibility; profiles.visibility = visibility
+            modes.visibility = visibility; hint.visibility = visibility
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
         return root
     }
 
