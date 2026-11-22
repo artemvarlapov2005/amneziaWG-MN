@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,13 +74,33 @@ class UpdatesFragment : Fragment() {
         checkRelease()
     }
 
+    // Public web redirects do not consume the unauthenticated REST API quota.
+    private fun publicRelease(): Release {
+        val connection = URL("$RELEASES/latest").openConnection() as HttpURLConnection
+        connection.requestMethod = "HEAD"
+        connection.connectTimeout = 15000; connection.readTimeout = 15000
+        try {
+            check(connection.responseCode == 200)
+            val prefix = "$RELEASES/tag/"
+            val destination = connection.url.toString()
+            require(destination.startsWith(prefix))
+            val tag = destination.removePrefix(prefix)
+            require(Regex("v?[0-9]+\\.[0-9]+\\.[0-9]+(?:-[A-Za-z0-9.-]+)?").matches(tag))
+            val version = tag.removePrefix("v")
+            return Release(tag, "", "$RELEASES/download/$tag/AmneziaWG-MN-$version-arm64.apk")
+        } finally { connection.disconnect() }
+    }
+
     private fun checkRelease() {
         check.isEnabled = false
         status.setText(R.string.mn_checking)
+        notes.text = ""
+        release = null
         install.visibility = View.GONE
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
+                  try {
                     val connection = URL(API).openConnection() as HttpURLConnection
                     connection.connectTimeout = 15000; connection.readTimeout = 15000
                     connection.setRequestProperty("Accept", "application/vnd.github+json")
@@ -101,6 +122,8 @@ class UpdatesFragment : Fragment() {
                         if (apk == null) return@withContext null
                         Release(json.getString("tag_name"), json.optString("body"), apk)
                     } finally { connection.disconnect() }
+                  } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { publicRelease() }
                 }
                 release = result
                 if (result == null) {
@@ -111,7 +134,8 @@ class UpdatesFragment : Fragment() {
                     status.text = if (current) getString(R.string.mn_current) else getString(R.string.mn_available, result.tag)
                     install.visibility = if (current) View.GONE else View.VISIBLE
                 }
-            } catch (_: Exception) { status.setText(R.string.mn_update_error) }
+            } catch (cancelled: CancellationException) { throw cancelled }
+              catch (_: Exception) { status.setText(R.string.mn_update_error) }
             finally { check.isEnabled = true }
         }
     }

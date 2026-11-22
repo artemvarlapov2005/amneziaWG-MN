@@ -8,7 +8,7 @@ Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-
 - Serialize network-change reconnect sequences with a coroutine mutex.
 - Build the native library with patched Go 1.25.0 and `GOTOOLCHAIN=local`, so Android timers use CLOCK_BOOTTIME across suspend.
 - Fix the native UAPI socket path for the v3 module.
-- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.0.0`.
+- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.0.1`.
 
 ## Navigation and updates
 
@@ -38,3 +38,12 @@ Upstream `:tunnel:testReleaseUnitTest` currently passes 8/10 tests; `INVALID_NUM
 VPN profiles and APK signing keys are intentionally not included. Export a profile from the original app and import it into the patched app; only one copy of that profile should be active.
 
 See [upstream README](README.upstream.md) for original project information.
+
+## Publishing a release
+
+1. Increase `amneziawgVersionName` (for example `1.0.1`) and always increase `amneziawgVersionCode` in `gradle.properties`. Android compares the internal code, not the displayed name.
+2. Build, align and sign the release APK with the existing private key.
+3. Create a public GitHub Release from the corresponding source commit with tag `v1.0.1`, attach `AmneziaWG-MN-1.0.1-arm64.apk`, and mark it **Latest**. Source-code ZIP archives and debug APKs are not application updates.
+4. Verify that the latest release and APK are accessible without signing in.
+
+The updater normally reads release assets through the GitHub API. If the API is unavailable or rate limited, it follows the public `releases/latest` web redirect and uses the exact filename convention above. Keep this filename stable. No GitHub token is bundled. The downloaded APK must still pass package, signing certificate and strictly greater version-code checks.
