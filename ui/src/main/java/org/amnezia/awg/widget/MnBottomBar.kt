@@ -34,6 +34,7 @@ class MnBottomBar @JvmOverloads constructor(context: Context, attrs: AttributeSe
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(6), dp(6), dp(6), dp(6))
         addTab(R.id.tab_configs, R.drawable.ic_mn_configs, R.string.mn_configs)
+        addTab(R.id.tab_routing, R.drawable.ic_mn_routing, R.string.mn_routing)
         addTab(R.id.tab_updates, R.drawable.ic_mn_updates, R.string.mn_updates)
         render()
     }
@@ -50,7 +51,7 @@ class MnBottomBar @JvmOverloads constructor(context: Context, attrs: AttributeSe
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         val label = TextView(context).apply {
-            setText(title); textSize = 13f; gravity = Gravity.CENTER
+            setText(title); textSize = 12f; gravity = Gravity.CENTER
             setSingleLine(); includeFontPadding = false
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }

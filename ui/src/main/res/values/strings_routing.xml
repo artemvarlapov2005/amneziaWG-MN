@@ -1,0 +1,16 @@
+<resources>
+<string name="mn_routing">Маршрутизация</string>
+<string name="mn_route_all">Все приложения через VPN</string>
+<string name="mn_route_include">Только выбранные через VPN</string>
+<string name="mn_route_exclude">Выбранные в обход VPN</string>
+<string name="mn_app_search">Поиск приложений</string>
+<string name="mn_route_apply">Применить</string>
+<string name="mn_route_reconnect">Активный VPN переподключится при применении настроек.</string>
+<string name="mn_route_count">Выбрано приложений: %1$d</string>
+<string name="mn_route_choose_apps">Выберите хотя бы одно приложение</string>
+<string name="mn_route_no_profiles">Сначала добавьте конфиг на вкладке «Конфиги».</string>
+<string name="mn_route_saved">Настройки маршрутизации сохранены</string>
+<string name="mn_selected">выбрано</string>
+<string name="mn_not_selected">не выбрано</string>
+<item name="tab_routing" type="id" />
+</resources>

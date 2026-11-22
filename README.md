@@ -8,7 +8,7 @@ Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-
 - Serialize network-change reconnect sequences with a coroutine mutex.
 - Build the native library with patched Go 1.25.0 and `GOTOOLCHAIN=local`, so Android timers use CLOCK_BOOTTIME across suspend.
 - Fix the native UAPI socket path for the v3 module.
-- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.0.1`.
+- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.1.0`.
 
 ## Navigation and updates
 
@@ -47,3 +47,7 @@ See [upstream README](README.upstream.md) for original project information.
 4. Verify that the latest release and APK are accessible without signing in.
 
 The updater normally reads release assets through the GitHub API. If the API is unavailable or rate limited, it follows the public `releases/latest` web redirect and uses the exact filename convention above. Keep this filename stable. No GitHub token is bundled. The downloaded APK must still pass package, signing certificate and strictly greater version-code checks.
+
+## Per-app routing
+
+The Routing tab selects a tunnel profile and one of three modes: all apps through VPN, only selected apps through VPN, or selected apps bypass VPN. Search matches app labels and package names. Apply saves the existing profile and reconnects it if active; other profiles and peer settings are unchanged. A non-default mode requires at least one app. Rules are local to this Android client. Android package visibility permission is used only to list installed apps locally.

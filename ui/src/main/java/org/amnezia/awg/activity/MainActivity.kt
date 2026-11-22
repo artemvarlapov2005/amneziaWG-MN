@@ -17,6 +17,7 @@ import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
 import org.amnezia.awg.R
 import org.amnezia.awg.widget.MnBottomBar
+import org.amnezia.awg.fragment.RoutingFragment
 import org.amnezia.awg.fragment.UpdatesFragment
 import org.amnezia.awg.fragment.TunnelDetailFragment
 import org.amnezia.awg.fragment.TunnelEditorFragment
@@ -68,11 +69,15 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
         backPressedCallback = onBackPressedDispatcher.addCallback(this) { handleBackPressed() }
         val navigation = findViewById<MnBottomBar>(R.id.bottom_navigation)
         navigation.setOnItemSelectedListener { item ->
-            updatesSelected = item.itemId == R.id.tab_updates
+            updatesSelected = item.itemId != R.id.tab_configs
             findViewById<View>(if (isTwoPaneLayout) R.id.master_detail_wrapper else R.id.detail_container).visibility = if (updatesSelected) View.GONE else View.VISIBLE
-            findViewById<View>(R.id.updates_container).visibility = if (updatesSelected) View.VISIBLE else View.GONE
-            if (updatesSelected && supportFragmentManager.findFragmentByTag("UPDATES") == null) {
-                supportFragmentManager.commit { add(R.id.updates_container, UpdatesFragment(), "UPDATES") }
+            val routing = item.itemId == R.id.tab_routing
+            findViewById<View>(R.id.updates_container).visibility = if (item.itemId == R.id.tab_updates) View.VISIBLE else View.GONE
+            findViewById<View>(R.id.routing_container).visibility = if (routing) View.VISIBLE else View.GONE
+            val tag = if (routing) "ROUTING" else "UPDATES"
+            val container = if (routing) R.id.routing_container else R.id.updates_container
+            if (updatesSelected && supportFragmentManager.findFragmentByTag(tag) == null) {
+                supportFragmentManager.commit { add(container, if (routing) RoutingFragment() else UpdatesFragment(), tag) }
             }
             invalidateOptionsMenu()
             onBackStackChanged()
