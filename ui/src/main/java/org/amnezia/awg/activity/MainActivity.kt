@@ -16,6 +16,8 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
 import org.amnezia.awg.R
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import org.amnezia.awg.fragment.UpdatesFragment
 import org.amnezia.awg.fragment.TunnelDetailFragment
 import org.amnezia.awg.fragment.TunnelEditorFragment
 import org.amnezia.awg.model.ObservableTunnel
@@ -26,11 +28,13 @@ import org.amnezia.awg.model.ObservableTunnel
  * editing the configuration and interface state of AmneziaWG tunnels.
  */
 class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener {
+    private var updatesSelected = false
     private var actionBar: ActionBar? = null
     private var isTwoPaneLayout = false
     private var backPressedCallback: OnBackPressedCallback? = null
 
     private fun handleBackPressed() {
+        if (updatesSelected) { findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.tab_configs; return }
         val backStackEntries = supportFragmentManager.backStackEntryCount
         // If the two-pane layout does not have an editor open, going back should exit the app.
         if (isTwoPaneLayout && backStackEntries <= 1) {
@@ -48,7 +52,7 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
 
     override fun onBackStackChanged() {
         val backStackEntries = supportFragmentManager.backStackEntryCount
-        backPressedCallback?.isEnabled = backStackEntries >= 1
+        backPressedCallback?.isEnabled = updatesSelected || backStackEntries >= 1
         if (actionBar == null) return
         // Do not show the home menu when the two-pane layout is at the detail view (see above).
         val minBackStackEntries = if (isTwoPaneLayout) 2 else 1
@@ -62,7 +66,30 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
         isTwoPaneLayout = findViewById<View?>(R.id.master_detail_wrapper) != null
         supportFragmentManager.addOnBackStackChangedListener(this)
         backPressedCallback = onBackPressedDispatcher.addCallback(this) { handleBackPressed() }
+        val navigation = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        navigation.setOnItemSelectedListener { item ->
+            updatesSelected = item.itemId == R.id.tab_updates
+            findViewById<View>(if (isTwoPaneLayout) R.id.master_detail_wrapper else R.id.detail_container).visibility = if (updatesSelected) View.GONE else View.VISIBLE
+            findViewById<View>(R.id.updates_container).visibility = if (updatesSelected) View.VISIBLE else View.GONE
+            if (updatesSelected && supportFragmentManager.findFragmentByTag("UPDATES") == null) {
+                supportFragmentManager.commit { add(R.id.updates_container, UpdatesFragment(), "UPDATES") }
+            }
+            invalidateOptionsMenu()
+            onBackStackChanged()
+            true
+        }
+        navigation.selectedItemId = savedInstanceState?.getInt("mn_tab", R.id.tab_configs) ?: R.id.tab_configs
         onBackStackChanged()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt("mn_tab", findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        menu.findItem(R.id.menu_action_edit)?.isVisible = !updatesSelected && selectedTunnel != null
+        return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

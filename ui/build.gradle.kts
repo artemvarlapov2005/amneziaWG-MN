@@ -34,7 +34,7 @@ android {
     buildTypes {
         release {
             applicationIdSuffix = ".patched"
-            versionNameSuffix = "-fix1"
+            versionNameSuffix = "-mn2"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles("proguard-android-optimize.txt")
@@ -66,6 +66,7 @@ android {
 }
 
 dependencies {
+    testImplementation(libs.junit)
     implementation(project(":tunnel"))
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.annotation)

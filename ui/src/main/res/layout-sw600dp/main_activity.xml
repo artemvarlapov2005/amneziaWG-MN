@@ -7,6 +7,7 @@
     tools:context=".activity.MainActivity">
 
     <LinearLayout
+        android:layout_marginBottom="92dp"
         android:id="@+id/master_detail_wrapper"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -30,4 +31,32 @@
             android:layout_weight="3" />
     </LinearLayout>
 
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/updates_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="92dp"
+        android:visibility="gone" />
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="76dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="12dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        app:cardCornerRadius="38dp"
+        app:cardElevation="4dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="?attr/colorOutline"
+        app:cardBackgroundColor="?attr/colorSurface">
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottom_navigation"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:minHeight="64dp"
+            app:labelVisibilityMode="labeled"
+            app:itemHorizontalTranslationEnabled="false"
+            app:menu="@menu/bottom_navigation" />
+    </com.google.android.material.card.MaterialCardView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

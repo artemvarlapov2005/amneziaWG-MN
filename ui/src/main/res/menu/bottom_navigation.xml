@@ -1,0 +1,1 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"><item android:id="@+id/tab_configs" android:icon="@drawable/ic_mn_configs" android:title="@string/mn_configs"/><item android:id="@+id/tab_updates" android:icon="@drawable/ic_mn_updates" android:title="@string/mn_updates"/></menu>

@@ -8,7 +8,11 @@ Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-
 - Serialize network-change reconnect sequences with a coroutine mutex.
 - Build the native library with patched Go 1.25.0 and `GOTOOLCHAIN=local`, so Android timers use CLOCK_BOOTTIME across suspend.
 - Fix the native UAPI socket path for the v3 module.
-- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `3.1.4-fix1`.
+- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `3.1.4-mn2`.
+
+## Navigation and updates
+
+The floating bottom bar switches between Configs and Updates. Updates use the latest public GitHub Release and ARM64/universal APK assets. Installation checks the package, signing certificate and a strictly higher Android version code. Publish signed release APKs with the same private signing key; debug APKs cannot update the installed release. Android asks the user to authorize installation from this app.
 
 ## Build
 
