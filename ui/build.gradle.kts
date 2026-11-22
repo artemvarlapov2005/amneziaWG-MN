@@ -34,7 +34,7 @@ android {
     buildTypes {
         release {
             applicationIdSuffix = ".patched"
-            versionNameSuffix = "-mn2"
+            versionNameSuffix = "-mn4"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles("proguard-android-optimize.txt")

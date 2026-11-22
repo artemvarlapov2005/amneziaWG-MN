@@ -16,7 +16,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
 import org.amnezia.awg.R
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import org.amnezia.awg.widget.MnBottomBar
 import org.amnezia.awg.fragment.UpdatesFragment
 import org.amnezia.awg.fragment.TunnelDetailFragment
 import org.amnezia.awg.fragment.TunnelEditorFragment
@@ -34,7 +34,7 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
     private var backPressedCallback: OnBackPressedCallback? = null
 
     private fun handleBackPressed() {
-        if (updatesSelected) { findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.tab_configs; return }
+        if (updatesSelected) { findViewById<MnBottomBar>(R.id.bottom_navigation).selectedItemId = R.id.tab_configs; return }
         val backStackEntries = supportFragmentManager.backStackEntryCount
         // If the two-pane layout does not have an editor open, going back should exit the app.
         if (isTwoPaneLayout && backStackEntries <= 1) {
@@ -66,7 +66,7 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
         isTwoPaneLayout = findViewById<View?>(R.id.master_detail_wrapper) != null
         supportFragmentManager.addOnBackStackChangedListener(this)
         backPressedCallback = onBackPressedDispatcher.addCallback(this) { handleBackPressed() }
-        val navigation = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        val navigation = findViewById<MnBottomBar>(R.id.bottom_navigation)
         navigation.setOnItemSelectedListener { item ->
             updatesSelected = item.itemId == R.id.tab_updates
             findViewById<View>(if (isTwoPaneLayout) R.id.master_detail_wrapper else R.id.detail_container).visibility = if (updatesSelected) View.GONE else View.VISIBLE
@@ -83,7 +83,7 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putInt("mn_tab", findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId)
+        outState.putInt("mn_tab", findViewById<MnBottomBar>(R.id.bottom_navigation).selectedItemId)
         super.onSaveInstanceState(outState)
     }
 
