@@ -294,7 +294,7 @@ public final class GoBackend implements Backend {
      * @throws Exception Exception raised while changing tunnel state.
      */
     @Override
-    public State setState(final Tunnel tunnel, State state, @Nullable final Config config) throws Exception {
+    public synchronized State setState(final Tunnel tunnel, State state, @Nullable final Config config) throws Exception {
         final State originalState = getState(tunnel);
 
         if (state == State.TOGGLE)

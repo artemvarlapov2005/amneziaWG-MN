@@ -16,3 +16,12 @@ build/
 *.jks
 gradlew.bat
 maint/
+
+# Personal signing and VPN data
+*.p12
+*.keystore
+/signing/
+/phone-configs/
+/vpn-configs/
+.env
+.env.*

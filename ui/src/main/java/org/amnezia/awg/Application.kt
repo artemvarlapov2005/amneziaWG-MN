@@ -38,6 +38,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.lang.ref.WeakReference
 import java.util.Locale
 
@@ -50,6 +52,7 @@ class Application : android.app.Application() {
     private lateinit var toolsInstaller: ToolsInstaller
     private lateinit var tunnelManager: TunnelManager
     private lateinit var networkState: NetworkState
+    private val reconnectMutex = Mutex()
 
     override fun attachBaseContext(context: Context) {
         super.attachBaseContext(context)
@@ -153,33 +156,35 @@ class Application : android.app.Application() {
         }
 
         coroutineScope.launch {
-            try {
-                val activeTunnels = tunnelManager.getTunnels().filter { 
-                    it.state == org.amnezia.awg.backend.Tunnel.State.UP 
-                }
-
-                if (activeTunnels.isEmpty()) {
-                    Log.d(TAG, "No active tunnels, skipping reconnection")
-                    return@launch
-                }
-
-                Log.i(TAG, "Reconnecting ${activeTunnels.size} tunnel(s) after network change: $oldType -> $newType")
-
-                for (tunnel in activeTunnels) {
-                    try {
-                        Log.d(TAG, "Disconnecting tunnel: ${tunnel.name}")
-                        // Toggle tunnel off and on to reconnect
-                        tunnel.setStateAsync(org.amnezia.awg.backend.Tunnel.State.DOWN)
-                        kotlinx.coroutines.delay(500) // Small delay for cleanup
-                        Log.d(TAG, "Reconnecting tunnel: ${tunnel.name}")
-                        tunnel.setStateAsync(org.amnezia.awg.backend.Tunnel.State.UP)
-                        Log.i(TAG, "Successfully reconnected tunnel: ${tunnel.name}")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to reconnect tunnel ${tunnel.name}", e)
+            reconnectMutex.withLock {
+                try {
+                    val activeTunnels = tunnelManager.getTunnels().filter {
+                        it.state == org.amnezia.awg.backend.Tunnel.State.UP
                     }
+
+                    if (activeTunnels.isEmpty()) {
+                        Log.d(TAG, "No active tunnels, skipping reconnection")
+                        return@launch
+                    }
+
+                    Log.i(TAG, "Reconnecting ${activeTunnels.size} tunnel(s) after network change: $oldType -> $newType")
+
+                    for (tunnel in activeTunnels) {
+                        try {
+                            Log.d(TAG, "Disconnecting tunnel: ${tunnel.name}")
+                            // Toggle tunnel off and on to reconnect
+                            tunnel.setStateAsync(org.amnezia.awg.backend.Tunnel.State.DOWN)
+                            kotlinx.coroutines.delay(500) // Small delay for cleanup
+                            Log.d(TAG, "Reconnecting tunnel: ${tunnel.name}")
+                            tunnel.setStateAsync(org.amnezia.awg.backend.Tunnel.State.UP)
+                            Log.i(TAG, "Successfully reconnected tunnel: ${tunnel.name}")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to reconnect tunnel ${tunnel.name}", e)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during network change handling", e)
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during network change handling", e)
             }
         }
     }

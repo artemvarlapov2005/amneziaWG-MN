@@ -15,6 +15,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     namespace = "${pkg}.tunnel"
+    defaultConfig { ndk { abiFilters += "arm64-v8a" } }
     externalNativeBuild {
         cmake {
             path("tools/CMakeLists.txt")

@@ -20,6 +20,7 @@ android {
     namespace = pkg
     defaultConfig {
         applicationId = pkg
+        ndk { abiFilters += "arm64-v8a" }
         targetSdk = 36
         versionCode = providers.gradleProperty("amneziawgVersionCode").get().toInt()
         versionName = providers.gradleProperty("amneziawgVersionName").get()
@@ -32,6 +33,8 @@ android {
     }
     buildTypes {
         release {
+            applicationIdSuffix = ".patched"
+            versionNameSuffix = "-fix1"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles("proguard-android-optimize.txt")
