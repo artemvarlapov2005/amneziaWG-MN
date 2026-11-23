@@ -16,6 +16,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
+import androidx.appcompat.widget.AppCompatSpinner
+import androidx.appcompat.view.ContextThemeWrapper
+import android.graphics.drawable.GradientDrawable
+import android.content.res.ColorStateList
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.*
 import org.amnezia.awg.BuildConfig
 import org.amnezia.awg.R
@@ -57,8 +62,23 @@ class UpdatesFragment : Fragment() {
         content.addView(auto)
         label(getString(R.string.mn_auto_interval))
         val intervals = resources.getStringArray(R.array.mn_auto_intervals)
-        val spinner = Spinner(context).apply {
-            adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, intervals)
+        val popupContext = ContextThemeWrapper(context, R.style.MnSpinnerPopup)
+        val popupTheme = popupContext.theme
+        val spinner = AppCompatSpinner(context, null, androidx.appcompat.R.attr.spinnerStyle, Spinner.MODE_DROPDOWN, popupTheme).apply {
+            setPopupBackgroundDrawable(GradientDrawable().apply {
+                cornerRadius = dp(12).toFloat()
+                setColor(MaterialColors.getColor(popupContext, com.google.android.material.R.attr.colorSurface, 0))
+            })
+            adapter = object : ArrayAdapter<String>(popupContext, android.R.layout.simple_spinner_dropdown_item, intervals) {
+                override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                    return (super.getDropDownView(position, convertView, parent) as TextView).apply {
+                        setBackgroundResource(R.drawable.mn_spinner_selection)
+                        val normal = MaterialColors.getColor(popupContext, com.google.android.material.R.attr.colorOnSurface, 0)
+                        val selected = MaterialColors.getColor(popupContext, com.google.android.material.R.attr.colorOnSecondaryContainer, normal)
+                        setTextColor(ColorStateList(arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf(android.R.attr.state_selected), intArrayOf(android.R.attr.state_focused), intArrayOf(android.R.attr.state_activated), intArrayOf()), intArrayOf(selected, selected, selected, selected, normal)))
+                    }
+                }
+            }
             setSelection(UpdateScheduler.intervals.indexOf(UpdateScheduler.minutes(context)).coerceAtLeast(0))
             isEnabled = auto.isChecked
         }

@@ -1,0 +1,10 @@
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+<style name="MnSpinnerPopup" parent="">
+    <item name="android:colorAccent">?attr/colorPrimary</item>
+    <item name="colorAccent">?attr/colorPrimary</item>
+    <item name="android:colorControlHighlight">?attr/colorSecondaryContainer</item>
+    <item name="colorControlHighlight">?attr/colorSecondaryContainer</item>
+    <item name="android:listSelector">@drawable/mn_spinner_selection</item>
+    <item name="android:colorBackground">?attr/colorSurface</item>
+</style>
+</resources>

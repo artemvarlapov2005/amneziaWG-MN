@@ -8,7 +8,7 @@ Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-
 - Serialize network-change reconnect sequences with a coroutine mutex.
 - Build the native library with patched Go 1.25.0 and `GOTOOLCHAIN=local`, so Android timers use CLOCK_BOOTTIME across suspend.
 - Fix the native UAPI socket path for the v3 module.
-- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.2.1`.
+- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.2.2`.
 
 ## Navigation and updates
 
@@ -63,3 +63,5 @@ On app entry a pending APK triggers Install/Later; the Updates icon shows a red 
 ## Download robustness
 
 1.2.1 adds byte/percentage progress and cancellation to manual downloads. HTTP transport has an 8-second connect timeout, 10-second idle read timeout and a hard 120-second wait including DNS/redirects. Foreground operations also cap time spent waiting for a concurrent download. Network I/O runs in a bounded executor, so a stuck resolver cannot block UI cancellation indefinitely. Partial files have unique names and are removed after failure/cancellation; no partial APK reaches the installer.
+
+The update interval picker keeps its dropdown interaction with an explicit opaque Material surface. Pressed, focused and selected states use the same selection colors and readable foreground, avoiding theme fallback colors.
