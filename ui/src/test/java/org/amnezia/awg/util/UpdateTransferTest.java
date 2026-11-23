@@ -43,4 +43,14 @@ public class UpdateTransferTest {
             catch (CancellationException expected) { }
         } finally { part.delete(); }
     }
+    @Test public void catalogSizeLimitRejectsBeforeWritingBody() throws Exception {
+        File part = File.createTempFile("catalog-limit", ".json");
+        try (ServerSocket listener = server("x".repeat(512), false)) {
+            UpdateTransfer.Handle h = UpdateTransfer.startLimited(new URL("http://127.0.0.1:" + listener.getLocalPort() + "/catalog"), part, 32, (bytes, total) -> { });
+            try { h.await(2000); fail("Oversized catalog must be rejected"); }
+            catch (IOException expected) { assertEquals(0, part.length()); }
+            finally { h.cancel(); }
+        } finally { part.delete(); }
+    }
+
 }

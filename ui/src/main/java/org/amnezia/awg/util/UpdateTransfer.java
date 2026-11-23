@@ -36,6 +36,7 @@ public final class UpdateTransfer {
                 c = (HttpURLConnection) url.openConnection();
                 c.setConnectTimeout(8000); c.setReadTimeout(10000);
                 c.setUseCaches(false); c.setRequestProperty("Cache-Control", "no-cache");
+                c.setRequestProperty("Accept-Encoding", "identity");
                 if (c.getResponseCode() != 200) throw new IOException("HTTP " + c.getResponseCode());
                 long length = c.getContentLengthLong();
                 if (length > maxBytes) throw new IOException("APK is too large");

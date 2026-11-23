@@ -65,7 +65,7 @@ python3 -m unittest discover -s tools -p 'test_*.py'
 ./gradlew :ui:testReleaseUnitTest --tests 'org.amnezia.awg.util.*'
 ```
 
-Channel implementation validation: release build, 19 selected JVM updater tests and 5 publisher tests passed. They cover numeric beta precedence, final promotion, channel filtering, downgrade rejection, generation/ABA invalidation, untrusted metadata, global publication counters, APK identity policy and bounded transfer cancellation. Full channel UI/device acceptance has not yet been run; the local SDK has no emulator/system image.
+Channel implementation validation: release build, 20 selected JVM updater tests and 5 publisher tests passed. They cover numeric beta precedence, final promotion, channel filtering, downgrade rejection, generation/ABA invalidation, untrusted metadata, global publication counters, APK identity policy and bounded transfer cancellation. Full channel UI/device acceptance has not yet been run; the local SDK has no emulator/system image.
 
 On a dedicated Android test device/emulator verify beta.1 → beta.2 → final, Stable filtering, beta opt-out waiting, and switching channels during download/install-permission flow. Exercise notification dismissal, Install/Later, badge clearing, cancellation, offline/catalog errors, wrong hash and wrong certificate. Use a test device, not an ADB installation on the user's phone.
 
