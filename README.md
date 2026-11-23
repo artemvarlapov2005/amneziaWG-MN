@@ -8,7 +8,7 @@ Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-
 - Serialize network-change reconnect sequences with a coroutine mutex.
 - Build the native library with patched Go 1.25.0 and `GOTOOLCHAIN=local`, so Android timers use CLOCK_BOOTTIME across suspend.
 - Fix the native UAPI socket path for the v3 module.
-- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.2.0`.
+- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.2.1`.
 
 ## Navigation and updates
 
@@ -59,3 +59,7 @@ Enabled by default, with a daily interval. Users can disable checks or select 15
 The shared downloader verifies package, signing certificate and a strictly higher Android version code before keeping an APK or notifying. Only one download runs at a time; a newer release removes the previous pending APK. Downloads use private persistent files, not cache. A notification opens an internal installation screen, which revalidates the file and requests per-app install permission if needed. Android still requires confirmation to install.
 
 On app entry a pending APK triggers Install/Later; the Updates icon shows a red dot while a valid newer APK is available. Notification dismissal does not remove it. Installed version is always shown separately from the check result. Notification permission is requested in-app on Android 13+. Delivery is via GitHub Releases; do not install updates to the user's phone through ADB.
+
+## Download robustness
+
+1.2.1 adds byte/percentage progress and cancellation to manual downloads. HTTP transport has an 8-second connect timeout, 10-second idle read timeout and a hard 120-second wait including DNS/redirects. Foreground operations also cap time spent waiting for a concurrent download. Network I/O runs in a bounded executor, so a stuck resolver cannot block UI cancellation indefinitely. Partial files have unique names and are removed after failure/cancellation; no partial APK reaches the installer.

@@ -1,0 +1,8 @@
+<resources>
+<string name="mn_download_cancel">Отменить загрузку</string>
+<string name="mn_download_cancelled">Загрузка отменена. Можно попробовать ещё раз.</string>
+<string name="mn_download_timeout">Загрузка заняла слишком много времени. Повторите попытку или скачайте APK в браузере через «Открыть релизы GitHub».</string>
+<string name="mn_download_failed">Не удалось скачать или проверить APK. Повторите попытку или скачайте файл в браузере через «Открыть релизы GitHub».</string>
+<string name="mn_download_progress">Загружено %1$s из %2$s МБ (%3$d%%)</string>
+<string name="mn_download_bytes">Загружено %1$s МБ…</string>
+</resources>

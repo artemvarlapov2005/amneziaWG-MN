@@ -5,6 +5,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runInterruptible
+import org.amnezia.awg.util.UpdateTransfer
+import java.util.UUID
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.amnezia.awg.BuildConfig
@@ -48,7 +51,7 @@ object UpdateRepository {
             UpdatePolicy.accepts(context.packageName, code(installed), signers(installed), archive.packageName, code(archive), signers(archive))
         } catch (_: Exception) { false }
     }
-    suspend fun download(context: Context, release: Release): File = lock.withLock {
+    suspend fun download(context: Context, release: Release, progress: (Long, Long) -> Unit = { _, _ -> }): File = lock.withLock {
         val target = file(context)
         val prefs = UpdateScheduler.prefs(context)
         if (prefs.getString("downloaded", null) == release.tag && valid(context, target)) return@withLock target
@@ -58,25 +61,15 @@ object UpdateRepository {
             context.getSystemService(android.app.NotificationManager::class.java).cancel(UpdateScheduler.NOTIFICATION)
         }
         target.parentFile!!.mkdirs()
-        val part = File(target.parentFile, "update.part")
-        val c = URL(release.url).openConnection() as HttpURLConnection
-        c.connectTimeout = 15000; c.readTimeout = 30000
+        val part = File(target.parentFile, "update-${UUID.randomUUID()}.part")
+        val transfer = UpdateTransfer.start(URL(release.url), part) { bytes, total -> progress(bytes, total) }
         try {
-            check(c.responseCode == 200)
-            c.inputStream.use { input -> part.outputStream().use { output ->
-                val buffer = ByteArray(32768); var total = 0L
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-                    val n = input.read(buffer); if (n < 0) break
-                    total += n; require(total <= 128L * 1024 * 1024)
-                    output.write(buffer, 0, n)
-                }
-            } }
+            runInterruptible { transfer.await(120000) }
             currentCoroutineContext().ensureActive()
             require(valid(context, part)) { "APK identity/version verification failed" }
             check(part.renameTo(target))
             prefs.edit().putString("downloaded", release.tag).apply()
             target
-        } finally { c.disconnect(); part.delete() }
+        } finally { transfer.cancel(); part.delete() }
     }
 }

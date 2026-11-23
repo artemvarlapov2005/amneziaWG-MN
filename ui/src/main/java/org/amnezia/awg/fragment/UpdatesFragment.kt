@@ -20,8 +20,12 @@ import kotlinx.coroutines.*
 import org.amnezia.awg.BuildConfig
 import org.amnezia.awg.R
 import org.amnezia.awg.updater.*
+import java.util.Locale
+import java.util.concurrent.TimeoutException
 
 class UpdatesFragment : Fragment() {
+    private var downloadJob: Job? = null
+    private lateinit var cancel: MaterialButton
     private var release: UpdateRepository.Release? = null
     private lateinit var status: TextView
     private lateinit var install: MaterialButton
@@ -43,6 +47,10 @@ class UpdatesFragment : Fragment() {
         status = label(getString(R.string.mn_checking))
         check = button(R.string.mn_check).apply { setOnClickListener { checkRelease() } }
         install = button(R.string.mn_install).apply { visibility = View.GONE; setOnClickListener { downloadOrInstall() } }
+        cancel = button(R.string.mn_download_cancel).apply {
+            visibility = View.GONE
+            setOnClickListener { downloadJob?.cancel() }
+        }
         val auto = SwitchMaterial(context).apply {
             setText(R.string.mn_auto_enable); isChecked = UpdateScheduler.enabled(context)
         }
@@ -113,19 +121,38 @@ class UpdatesFragment : Fragment() {
         }
     }
     private fun downloadOrInstall() {
+        if (downloadJob?.isActive == true) return
         install.isEnabled = false; check.isEnabled = false
+        cancel.visibility = View.VISIBLE
+        status.setText(R.string.mn_downloading)
         val context = requireContext().applicationContext
-        viewLifecycleOwner.lifecycleScope.launch {
+        val owner = viewLifecycleOwner
+        downloadJob = viewLifecycleOwner.lifecycleScope.launch {
+            val operation = coroutineContext[Job]
             try {
-                withContext(Dispatchers.IO) {
+                withTimeout(130000) { withContext(Dispatchers.IO) {
                     val chosen = release
-                    if (chosen != null && UpdateRepository.newer(chosen)) UpdateRepository.download(context, chosen)
+                    if (chosen != null && UpdateRepository.newer(chosen)) UpdateRepository.download(context, chosen) { bytes, total ->
+                        owner.lifecycleScope.launch(Dispatchers.Main) {
+                            if (operation?.isActive == true) {
+                                val mb = String.format(Locale.getDefault(), "%.1f", bytes / 1048576.0)
+                                status.text = if (total > 0) getString(R.string.mn_download_progress, mb,
+                                    String.format(Locale.getDefault(), "%.1f", total / 1048576.0), (bytes * 100 / total).toInt())
+                                else getString(R.string.mn_download_bytes, mb)
+                            }
+                        }
+                    }
                     require(UpdateRepository.valid(context))
-                }
+                } }
                 startActivity(Intent(requireContext(), UpdateInstallActivity::class.java))
-            } catch (cancelled: CancellationException) { throw cancelled }
-              catch (_: Exception) { status.setText(R.string.mn_update_error) }
-            finally { install.isEnabled = true; check.isEnabled = true }
+            } catch (_: TimeoutCancellationException) { status.setText(R.string.mn_download_timeout) }
+              catch (cancelled: CancellationException) {
+                status.setText(R.string.mn_download_cancelled)
+                throw cancelled
+            } catch (_: TimeoutException) { status.setText(R.string.mn_download_timeout) }
+              catch (_: java.net.SocketTimeoutException) { status.setText(R.string.mn_download_timeout) }
+              catch (_: Exception) { status.setText(R.string.mn_download_failed) }
+            finally { install.isEnabled = true; check.isEnabled = true; cancel.visibility = View.GONE }
         }
     }
 }
