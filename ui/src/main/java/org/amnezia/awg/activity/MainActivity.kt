@@ -106,12 +106,16 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
 
     override fun onResume() {
         super.onResume()
+        refreshPendingUpdateIndicator()
+    }
+
+    fun refreshPendingUpdateIndicator() {
         lifecycleScope.launch {
             val ready = withContext(Dispatchers.IO) { UpdateRepository.valid(this@MainActivity) }
             if (isFinishing || supportFragmentManager.isStateSaved || !lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) return@launch
-            findViewById<MnBottomBar>(R.id.bottom_navigation).showUpdateBadge(ready)
+            findViewById<MnBottomBar>(R.id.bottom_navigation).showUpdateBadge(ready && UpdateRepository.pendingAllowed(this@MainActivity))
             val tag = UpdateScheduler.prefs(this@MainActivity).getString("downloaded", null)
-            if (ready && tag != null && promptedUpdate != tag) {
+            if (ready && UpdateRepository.pendingAllowed(this@MainActivity) && tag != null && promptedUpdate != tag) {
                 promptedUpdate = tag
                 MaterialAlertDialogBuilder(this@MainActivity)
                     .setTitle(R.string.mn_auto_ready_title)

@@ -1,0 +1,11 @@
+<resources>
+<string name="mn_channel_label">Канал обновлений</string>
+<string name="mn_channel_selected">Канал обновлений: %1$s</string>
+<string name="mn_installed_channel">Установлена версия %1$s · %2$s</string>
+<string name="mn_channel_stable">Stable — стабильные версии</string>
+<string name="mn_channel_beta">Beta — тестовые и стабильные версии</string>
+<string name="mn_channel_beta_warning">Бета-версии могут содержать ошибки. Конфиги сохраняются. При возврате на Stable текущая бета останется до выхода подходящей стабильной версии.</string>
+<string name="mn_channel_enable_beta">Включить Beta</string>
+<string name="mn_channel_wait_stable">Канал Stable выбран. Следующее обновление придёт после выхода подходящей стабильной версии.</string>
+<string name="mn_channel_check_failed">Не удалось проверить выбранный канал. Проверьте подключение и повторите попытку.</string>
+</resources>

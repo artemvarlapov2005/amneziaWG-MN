@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "stable": {
+    "tag": "1.2.2",
+    "versionName": "1.2.2",
+    "versionCode": 23,
+    "apkUrl": "https://github.com/artemvarlapov2005/amneziaWG-MN/releases/download/1.2.2/AmneziaWG-MN-1.2.2-arm64.apk",
+    "sha256": "b9cdbc6e71b8db78a73082113533a97d11963df4d6124ca76a50f991d144e812",
+    "notes": "Текущая стабильная версия. Исправлены цвета списка интервалов обновлений."
+  },
+  "beta": null
+}

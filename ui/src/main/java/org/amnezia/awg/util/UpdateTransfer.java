@@ -25,6 +25,10 @@ public final class UpdateTransfer {
         public void cancel() { cancelled.set(true); future.cancel(true); }
     }
     public static Handle start(URL url, File part, Progress progress) {
+        return startLimited(url, part, MAX_BYTES, progress);
+    }
+    public static Handle startLimited(URL url, File part, long maxBytes, Progress progress) {
+        if (maxBytes <= 0 || maxBytes > MAX_BYTES) throw new IllegalArgumentException("Invalid size limit");
         Handle handle = new Handle();
         handle.future = NETWORK.submit(() -> {
             HttpURLConnection c = null;
@@ -34,7 +38,7 @@ public final class UpdateTransfer {
                 c.setUseCaches(false); c.setRequestProperty("Cache-Control", "no-cache");
                 if (c.getResponseCode() != 200) throw new IOException("HTTP " + c.getResponseCode());
                 long length = c.getContentLengthLong();
-                if (length > MAX_BYTES) throw new IOException("APK is too large");
+                if (length > maxBytes) throw new IOException("APK is too large");
                 progress.received(0, length);
                 try (InputStream input = c.getInputStream(); OutputStream output = new FileOutputStream(part)) {
                     byte[] buffer = new byte[32768]; long total = 0;
@@ -42,7 +46,7 @@ public final class UpdateTransfer {
                         if (handle.cancelled.get() || Thread.currentThread().isInterrupted()) throw new InterruptedIOException("Cancelled");
                         int n = input.read(buffer); if (n < 0) break;
                         total += n;
-                        if (total > MAX_BYTES) throw new IOException("APK is too large");
+                        if (total > maxBytes) throw new IOException("APK is too large");
                         output.write(buffer, 0, n); progress.received(total, length);
                     }
                     if (length >= 0 && total != length) throw new EOFException("Incomplete APK");

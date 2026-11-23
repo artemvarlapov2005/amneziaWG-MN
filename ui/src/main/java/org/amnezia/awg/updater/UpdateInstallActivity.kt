@@ -38,7 +38,7 @@ class UpdateInstallActivity : AppCompatActivity() {
         button.isEnabled = false
         lifecycleScope.launch {
             val valid = withContext(Dispatchers.IO) { UpdateRepository.valid(this@UpdateInstallActivity) }
-            if (!valid) { status.setText(R.string.mn_auto_no_file); return@launch }
+            if (!valid || !UpdateRepository.pendingAllowed(this@UpdateInstallActivity)) { status.setText(R.string.mn_auto_no_file); return@launch }
             button.isEnabled = true
             if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
                 status.setText(R.string.mn_installer_permission)

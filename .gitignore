@@ -25,3 +25,7 @@ maint/
 /vpn-configs/
 .env
 .env.*
+
+# Python release tooling
+__pycache__/
+*.pyc

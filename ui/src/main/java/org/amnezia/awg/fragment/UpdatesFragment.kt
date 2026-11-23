@@ -25,13 +25,22 @@ import kotlinx.coroutines.*
 import org.amnezia.awg.BuildConfig
 import org.amnezia.awg.R
 import org.amnezia.awg.updater.*
+import org.amnezia.awg.util.ChannelRelease
+import org.amnezia.awg.util.ChannelGate
+import org.amnezia.awg.util.UpdateVersion
+import org.amnezia.awg.activity.MainActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.Locale
 import java.util.concurrent.TimeoutException
 
 class UpdatesFragment : Fragment() {
     private var downloadJob: Job? = null
     private lateinit var cancel: MaterialButton
-    private var release: UpdateRepository.Release? = null
+    private var release: ChannelRelease? = null
+    private var selection: ChannelGate.Snapshot? = null
+    private var checkJob: Job? = null
+    private lateinit var channelButton: MaterialButton
+    private lateinit var notes: TextView
     private lateinit var status: TextView
     private lateinit var install: MaterialButton
     private lateinit var check: MaterialButton
@@ -48,7 +57,10 @@ class UpdatesFragment : Fragment() {
             it.setText(text); content.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         }
         label(getString(R.string.mn_updates_heading), 26f)
-        label(getString(R.string.mn_installed, BuildConfig.VERSION_NAME))
+        label(getString(R.string.mn_installed_channel, BuildConfig.VERSION_NAME, if (UpdateVersion.isBeta(BuildConfig.VERSION_NAME)) "Beta" else "Stable"))
+        channelButton = button(R.string.mn_channel_label).apply { setOnClickListener { chooseChannel() } }
+        updateChannelLabel()
+        notes = label("", 14f)
         status = label(getString(R.string.mn_checking))
         check = button(R.string.mn_check).apply { setOnClickListener { checkRelease() } }
         install = button(R.string.mn_install).apply { visibility = View.GONE; setOnClickListener { downloadOrInstall() } }
@@ -118,26 +130,64 @@ class UpdatesFragment : Fragment() {
     private fun refreshNotifications() {
         if (::notificationHint.isInitialized) notificationHint.visibility = if (NotificationManagerCompat.from(requireContext()).areNotificationsEnabled()) View.GONE else View.VISIBLE
     }
+    private fun updateChannelLabel() {
+        channelButton.text = getString(R.string.mn_channel_selected, if (UpdateRepository.channel(requireContext()) == "beta") "Beta" else "Stable")
+    }
+    private fun chooseChannel() {
+        val beta = UpdateRepository.channel(requireContext()) == "beta"
+        MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.mn_channel_label)
+            .setSingleChoiceItems(arrayOf(getString(R.string.mn_channel_stable), getString(R.string.mn_channel_beta)), if (beta) 1 else 0) { dialog, position ->
+                dialog.dismiss()
+                val channel = if (position == 1) "beta" else "stable"
+                if (channel == UpdateRepository.channel(requireContext())) return@setSingleChoiceItems
+                if (channel == "beta") MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.mn_channel_beta)
+                    .setMessage(R.string.mn_channel_beta_warning)
+                    .setPositiveButton(R.string.mn_channel_enable_beta) { _, _ -> switchChannel(channel) }
+                    .setNegativeButton(R.string.cancel, null).show()
+                else switchChannel(channel)
+            }.setNegativeButton(R.string.cancel, null).show()
+    }
+    private fun switchChannel(channel: String) {
+        downloadJob?.cancel(); checkJob?.cancel()
+        UpdateRepository.changeChannel(requireContext(), channel)
+        release = null; selection = null; notes.text = ""
+        install.isEnabled = true; cancel.visibility = View.GONE
+        updateChannelLabel()
+        (activity as? MainActivity)?.refreshPendingUpdateIndicator()
+        checkRelease()
+    }
     private fun checkRelease() {
+        checkJob?.cancel()
+        val context = requireContext().applicationContext
+        val started = UpdateRepository.snapshot(context)
+        release = null; selection = null; notes.text = ""
         check.isEnabled = false; install.visibility = View.GONE; status.setText(R.string.mn_checking)
-        viewLifecycleOwner.lifecycleScope.launch {
+        checkJob = viewLifecycleOwner.lifecycleScope.launch {
             try {
-                release = withContext(Dispatchers.IO) { UpdateRepository.latest() }
-                val chosen = release!!
-                if (!UpdateRepository.newer(chosen)) status.setText(R.string.mn_current)
-                else {
-                    val ready = withContext(Dispatchers.IO) { UpdateRepository.valid(requireContext()) && UpdateScheduler.prefs(requireContext()).getString("downloaded", null) == chosen.tag }
-                    status.text = getString(if (ready) R.string.mn_auto_ready_body else R.string.mn_available, chosen.version)
+                val result = withContext(Dispatchers.IO) { UpdateRepository.latest(context) }
+                if (!UpdateRepository.current(context, result.snapshot)) return@launch
+                selection = result.snapshot; release = result.candidate
+                val chosen = result.candidate
+                if (chosen == null) {
+                    status.setText(if (result.waitingForStable) R.string.mn_channel_wait_stable else R.string.mn_current)
+                } else {
+                    val ready = withContext(Dispatchers.IO) { UpdateRepository.withReady(context) { it.sha256 == chosen.sha256 } ?: false }
+                    if (!UpdateRepository.current(context, result.snapshot)) return@launch
+                    notes.text = chosen.notes.take(12000)
+                    status.text = getString(if (ready) R.string.mn_auto_ready_body else R.string.mn_available, chosen.versionName)
                     install.setText(if (ready) R.string.mn_auto_install else R.string.mn_install)
                     install.visibility = View.VISIBLE
                 }
-            } catch (cancelled: CancellationException) { throw cancelled }
+            } catch (_: UpdateRepository.ChannelChangedException) { }
+              catch (cancelled: CancellationException) { throw cancelled }
               catch (_: Exception) {
-                status.setText(R.string.mn_update_error)
-                if (withContext(Dispatchers.IO) { UpdateRepository.valid(requireContext()) }) {
-                    install.setText(R.string.mn_auto_install); install.visibility = View.VISIBLE
+                if (UpdateRepository.current(context, started)) {
+                    status.setText(R.string.mn_channel_check_failed)
+                    if (withContext(Dispatchers.IO) { UpdateRepository.valid(context) } && UpdateRepository.current(context, started)) {
+                        install.setText(R.string.mn_auto_install); install.visibility = View.VISIBLE
+                    }
                 }
-            } finally { check.isEnabled = true }
+            } finally { if (UpdateRepository.current(context, started)) check.isEnabled = true }
         }
     }
     private fun downloadOrInstall() {
@@ -147,14 +197,15 @@ class UpdatesFragment : Fragment() {
         status.setText(R.string.mn_downloading)
         val context = requireContext().applicationContext
         val owner = viewLifecycleOwner
+        val expected = selection ?: UpdateRepository.snapshot(context)
+        val chosen = release
         downloadJob = viewLifecycleOwner.lifecycleScope.launch {
             val operation = coroutineContext[Job]
             try {
                 withTimeout(130000) { withContext(Dispatchers.IO) {
-                    val chosen = release
-                    if (chosen != null && UpdateRepository.newer(chosen)) UpdateRepository.download(context, chosen) { bytes, total ->
+                    if (chosen != null) UpdateRepository.download(context, chosen, expected) { bytes, total ->
                         owner.lifecycleScope.launch(Dispatchers.Main) {
-                            if (operation?.isActive == true) {
+                            if (operation?.isActive == true && UpdateRepository.current(context, expected)) {
                                 val mb = String.format(Locale.getDefault(), "%.1f", bytes / 1048576.0)
                                 status.text = if (total > 0) getString(R.string.mn_download_progress, mb,
                                     String.format(Locale.getDefault(), "%.1f", total / 1048576.0), (bytes * 100 / total).toInt())
@@ -164,15 +215,18 @@ class UpdatesFragment : Fragment() {
                     }
                     require(UpdateRepository.valid(context))
                 } }
-                startActivity(Intent(requireContext(), UpdateInstallActivity::class.java))
-            } catch (_: TimeoutCancellationException) { status.setText(R.string.mn_download_timeout) }
+                if (UpdateRepository.current(context, expected)) startActivity(Intent(requireContext(), UpdateInstallActivity::class.java))
+            } catch (_: UpdateRepository.ChannelChangedException) { }
+              catch (_: TimeoutCancellationException) { if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_timeout) }
               catch (cancelled: CancellationException) {
-                status.setText(R.string.mn_download_cancelled)
+                if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_cancelled)
                 throw cancelled
-            } catch (_: TimeoutException) { status.setText(R.string.mn_download_timeout) }
-              catch (_: java.net.SocketTimeoutException) { status.setText(R.string.mn_download_timeout) }
-              catch (_: Exception) { status.setText(R.string.mn_download_failed) }
-            finally { install.isEnabled = true; check.isEnabled = true; cancel.visibility = View.GONE }
+            } catch (_: TimeoutException) { if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_timeout) }
+              catch (_: java.net.SocketTimeoutException) { if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_timeout) }
+              catch (_: Exception) { if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_failed) }
+            finally {
+                if (UpdateRepository.current(context, expected)) { install.isEnabled = true; check.isEnabled = true; cancel.visibility = View.GONE }
+            }
         }
     }
 }

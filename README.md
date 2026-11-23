@@ -8,7 +8,7 @@ Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-
 - Serialize network-change reconnect sequences with a coroutine mutex.
 - Build the native library with patched Go 1.25.0 and `GOTOOLCHAIN=local`, so Android timers use CLOCK_BOOTTIME across suspend.
 - Fix the native UAPI socket path for the v3 module.
-- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.2.2`.
+- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.3.0`.
 
 ## Navigation and updates
 
@@ -65,3 +65,33 @@ On app entry a pending APK triggers Install/Later; the Updates icon shows a red 
 1.2.1 adds byte/percentage progress and cancellation to manual downloads. HTTP transport has an 8-second connect timeout, 10-second idle read timeout and a hard 120-second wait including DNS/redirects. Foreground operations also cap time spent waiting for a concurrent download. Network I/O runs in a bounded executor, so a stuck resolver cannot block UI cancellation indefinitely. Partial files have unique names and are removed after failure/cancellation; no partial APK reaches the installer.
 
 The update interval picker keeps its dropdown interaction with an explicit opaque Material surface. Pressed, focused and selected states use the same selection colors and readable foreground, avoiding theme fallback colors.
+
+## Stable and Beta channels
+
+Updates defaults to **Stable**. Opting into **Beta** requires confirmation and allows both beta and stable builds. All builds use the same package/certificate and one globally increasing Android `versionCode`. Stable names are `X.Y.Z`; beta names are `X.Y.Z-beta.N`. A candidate must have both a newer SemVer and a higher code. Returning from beta to stable waits for a compatible stable release and never rolls back or deletes tunnel profiles.
+
+New clients read `updates/channels.json` from this repository's public `master` branch via raw.githubusercontent.com, with a 20-second overall deadline and 256 KiB limit. Stable considers the stable entry; Beta considers both entries. The highest eligible SemVer wins. The JSON contains schemaVersion 1 and stable/beta entries (beta may be null); each entry specifies tag, versionName, versionCode, apkUrl, sha256, notes. The APK is checked against its metadata, installed package and certificate before notification/install. An invalid/unreachable catalog produces a check error, never "up to date".
+
+Switching channels invalidates outstanding operations using a persisted generation counter. Incompatible cached APKs/notifications are removed. An eligible cached stable APK can remain on Beta opt-in. Manual checks, scheduled checks, prompts, badges and installer permission returns all enforce the chosen channel. Migration clears legacy APK metadata but preserves profiles, auto-update enablement and intervals.
+
+### Publishing channel releases
+
+1. Increase the global versionCode above **both** channel entries. Set the version name in gradle.properties, build, align and sign with the existing private release key. Do not reuse an uploaded tag or replace an APK under the same version.
+2. Publish the signed APK in GitHub Releases using its version as the tag and `AmneziaWG-MN-<version>-arm64.apk` as the filename. Beta must be **Pre-release** and must not become Latest. Stable must be **Latest**, preserving updates for old clients that still use the GitHub latest redirect.
+3. Verify the public APK URL is accessible. Generate metadata from the exact signed artifact, first with `--dry-run`, then without it:
+
+```sh
+python3 tools/publish-update.py --channel stable \
+  --apk /absolute/path/AmneziaWG-MN-1.3.0-arm64.apk \
+  --build-tools /absolute/path/android-sdk/build-tools/36.0.0 \
+  --notes-file /absolute/path/release-notes.txt --dry-run
+```
+
+For a beta use `--channel beta`, e.g. version/tag `1.4.0-beta.1`. The script verifies package/ABI, the existing public signing-certificate fingerprint and monotonically increasing version/code. It performs no signing, uploads or Git pushes. Never put the private keystore/password in this repository. `updates/signing-certificate.sha256` is only a public certificate fingerprint.
+
+4. Commit and publish the generated catalog **after** the Release APK is available. Only the selected channel pointer changes. Keep the other pointer. New clients do not scan release history or use GitHub API tokens.
+5. Validate release metadata with `python3 -m unittest discover -s tools -p 'test_*.py'`. Run the updater unit tests and the real-device checklist below before calling the Android workflow fully verified.
+
+### Android acceptance checklist
+
+Use a dedicated test device/emulator, not an ADB installation onto the user's phone. Verify Stable does not offer beta; Beta upgrades beta.1 to beta.2 and then final; a lower stable hotfix never downgrades a newer beta; beta opt-out waits. Change the channel during a download and during the install-permission screen: no old-channel APK/notification may be committed or installed. Exercise notification dismissal, Install/Later, badge, cancellation, offline checks, wrong hash and wrong certificate. No Android test emulator is bundled with the current local SDK; JVM/tooling checks alone do not verify these UI flows.
