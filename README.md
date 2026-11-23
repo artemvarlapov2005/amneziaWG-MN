@@ -8,7 +8,7 @@ Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-
 - Serialize network-change reconnect sequences with a coroutine mutex.
 - Build the native library with patched Go 1.25.0 and `GOTOOLCHAIN=local`, so Android timers use CLOCK_BOOTTIME across suspend.
 - Fix the native UAPI socket path for the v3 module.
-- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.1.1`.
+- ARM64 release builds install separately as `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**, version `1.2.0`.
 
 ## Navigation and updates
 
@@ -51,3 +51,11 @@ The updater normally reads release assets through the GitHub API. If the API is 
 ## Per-app routing
 
 The Routing tab selects a tunnel profile and one of three modes: all apps through VPN, only selected apps through VPN, or selected apps bypass VPN. Search matches app labels and package names. Apply saves the existing profile and reconnects it if active; other profiles and peer settings are unchanged. A non-default mode requires at least one app. Rules are local to this Android client. Android package visibility permission is used only to list installed apps locally.
+
+## Background updates
+
+Enabled by default, with a daily interval. Users can disable checks or select 15 minutes, 1/6/12/24 hours under Updates. Android JobScheduler persists the job across reboot and waits for network connectivity; battery restrictions can delay execution. Both Wi-Fi and mobile data are allowed. The latest public GitHub release is resolved without REST API quota.
+
+The shared downloader verifies package, signing certificate and a strictly higher Android version code before keeping an APK or notifying. Only one download runs at a time; a newer release removes the previous pending APK. Downloads use private persistent files, not cache. A notification opens an internal installation screen, which revalidates the file and requests per-app install permission if needed. Android still requires confirmation to install.
+
+On app entry a pending APK triggers Install/Later; the Updates icon shows a red dot while a valid newer APK is available. Notification dismissal does not remove it. Installed version is always shown separately from the check result. Notification permission is requested in-app on Android 13+. Delivery is via GitHub Releases; do not install updates to the user's phone through ADB.

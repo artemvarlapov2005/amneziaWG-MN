@@ -16,6 +16,14 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
 import org.amnezia.awg.R
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import org.amnezia.awg.updater.UpdateRepository
+import org.amnezia.awg.updater.UpdateScheduler
+import org.amnezia.awg.updater.UpdateInstallActivity
 import org.amnezia.awg.widget.MnBottomBar
 import org.amnezia.awg.fragment.RoutingFragment
 import org.amnezia.awg.fragment.UpdatesFragment
@@ -29,6 +37,8 @@ import org.amnezia.awg.model.ObservableTunnel
  * editing the configuration and interface state of AmneziaWG tunnels.
  */
 class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener {
+    private val updateNotificationsPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    private var promptedUpdate: String? = null
     private var updatesSelected = false
     private var actionBar: ActionBar? = null
     private var isTwoPaneLayout = false
@@ -62,6 +72,7 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        promptedUpdate = savedInstanceState?.getString("prompted_update")
         setContentView(R.layout.main_activity)
         actionBar = supportActionBar
         isTwoPaneLayout = findViewById<View?>(R.id.master_detail_wrapper) != null
@@ -84,10 +95,35 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
             true
         }
         navigation.selectedItemId = savedInstanceState?.getInt("mn_tab", R.id.tab_configs) ?: R.id.tab_configs
+        if (android.os.Build.VERSION.SDK_INT >= 33 && UpdateScheduler.enabled(this) &&
+            !UpdateScheduler.prefs(this).getBoolean("notification_asked", false) &&
+            androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            UpdateScheduler.prefs(this).edit().putBoolean("notification_asked", true).apply()
+            updateNotificationsPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
         onBackStackChanged()
     }
 
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            val ready = withContext(Dispatchers.IO) { UpdateRepository.valid(this@MainActivity) }
+            if (isFinishing || supportFragmentManager.isStateSaved || !lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) return@launch
+            findViewById<MnBottomBar>(R.id.bottom_navigation).showUpdateBadge(ready)
+            val tag = UpdateScheduler.prefs(this@MainActivity).getString("downloaded", null)
+            if (ready && tag != null && promptedUpdate != tag) {
+                promptedUpdate = tag
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle(R.string.mn_auto_ready_title)
+                    .setMessage(getString(R.string.mn_auto_ready_body, tag.removePrefix("v")))
+                    .setPositiveButton(R.string.mn_auto_install) { _, _ -> startActivity(Intent(this@MainActivity, UpdateInstallActivity::class.java)) }
+                    .setNegativeButton(R.string.mn_auto_later, null).show()
+            }
+        }
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("prompted_update", promptedUpdate)
         outState.putInt("mn_tab", findViewById<MnBottomBar>(R.id.bottom_navigation).selectedItemId)
         super.onSaveInstanceState(outState)
     }

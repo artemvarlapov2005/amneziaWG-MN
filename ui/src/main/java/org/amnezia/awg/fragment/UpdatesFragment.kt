@@ -1,196 +1,131 @@
 package org.amnezia.awg.fragment
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import androidx.core.content.FileProvider
+import android.net.Uri
+import android.view.*
+import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
-import com.google.android.material.color.MaterialColors
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.google.android.material.switchmaterial.SwitchMaterial
+import kotlinx.coroutines.*
 import org.amnezia.awg.BuildConfig
 import org.amnezia.awg.R
-import org.amnezia.awg.util.UpdatePolicy
-import org.json.JSONObject
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
-import java.security.MessageDigest
+import org.amnezia.awg.updater.*
 
 class UpdatesFragment : Fragment() {
-    private data class Release(val tag: String, val notes: String, val apk: String)
-    private var release: Release? = null
+    private var release: UpdateRepository.Release? = null
     private lateinit var status: TextView
-    private lateinit var notes: TextView
     private lateinit var install: MaterialButton
     private lateinit var check: MaterialButton
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
-
+    private lateinit var notificationHint: MaterialButton
+    private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { refreshNotifications() }
+    private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         val context = requireContext()
-        val content = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(28), dp(24), dp(24))
+        val content = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(20), dp(20), dp(20)) }
+        fun label(text: String, size: Float = 16f) = TextView(context).apply {
+            this.text = text; textSize = size; setPadding(0, 0, 0, dp(12)); content.addView(this)
         }
-        fun label(text: String, size: Float): TextView = TextView(context).apply {
-            this.text = text; textSize = size
-            setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface))
-            setPadding(0, 0, 0, dp(16))
-            content.addView(this, LinearLayout.LayoutParams(-1, -2))
+        fun button(text: Int) = MaterialButton(context).also {
+            it.setText(text); content.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         }
-        label(getString(R.string.mn_updates_heading), 28f)
-        label(getString(R.string.mn_updates_description), 16f)
-        val card = MaterialCardView(context).apply { radius = dp(24).toFloat(); cardElevation = 0f }
-        val details = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(20), dp(20), dp(20)) }
-        status = TextView(context).apply { textSize = 18f; text = getString(R.string.mn_installed, BuildConfig.VERSION_NAME) }
-        notes = TextView(context).apply { textSize = 14f; setPadding(0, dp(16), 0, 0) }
-        details.addView(status); details.addView(notes); card.addView(details); content.addView(card)
-        fun button(title: Int): MaterialButton = MaterialButton(context).also {
-            it.setText(title)
-            content.addView(it, LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(16) })
-        }
+        label(getString(R.string.mn_updates_heading), 26f)
+        label(getString(R.string.mn_installed, BuildConfig.VERSION_NAME))
+        status = label(getString(R.string.mn_checking))
         check = button(R.string.mn_check).apply { setOnClickListener { checkRelease() } }
-        install = button(R.string.mn_install).apply { visibility = View.GONE; setOnClickListener { downloadAndInstall() } }
-        button(R.string.mn_releases).setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES))) }
-        return ScrollView(context).apply { isFillViewport = true; addView(content) }
+        install = button(R.string.mn_install).apply { visibility = View.GONE; setOnClickListener { downloadOrInstall() } }
+        val auto = SwitchMaterial(context).apply {
+            setText(R.string.mn_auto_enable); isChecked = UpdateScheduler.enabled(context)
+        }
+        content.addView(auto)
+        label(getString(R.string.mn_auto_interval))
+        val intervals = resources.getStringArray(R.array.mn_auto_intervals)
+        val spinner = Spinner(context).apply {
+            adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, intervals)
+            setSelection(UpdateScheduler.intervals.indexOf(UpdateScheduler.minutes(context)).coerceAtLeast(0))
+            isEnabled = auto.isChecked
+        }
+        content.addView(spinner, LinearLayout.LayoutParams(-1, dp(48)))
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                UpdateScheduler.configure(context, auto.isChecked, UpdateScheduler.intervals[position])
+            }
+        }
+        auto.setOnCheckedChangeListener { _, enabled ->
+            spinner.isEnabled = enabled
+            UpdateScheduler.configure(context, enabled, UpdateScheduler.intervals[spinner.selectedItemPosition.coerceAtLeast(0)])
+            if (enabled) askNotifications()
+        }
+        label(getString(R.string.mn_auto_explanation), 13f)
+        notificationHint = button(R.string.mn_auto_notifications).apply {
+            setOnClickListener {
+                if (Build.VERSION.SDK_INT >= 33 && shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) askNotifications()
+                else startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+            }
+        }
+        button(R.string.mn_releases).setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(UpdateRepository.RELEASES))) }
+        return ScrollView(context).apply { addView(content) }
     }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    override fun onViewCreated(view: View, state: Bundle?) {
         checkRelease()
+        if (UpdateScheduler.enabled(requireContext()) && !UpdateScheduler.prefs(requireContext()).getBoolean("notification_asked", false)) askNotifications()
     }
-
-    // Public web redirects do not consume the unauthenticated REST API quota.
-    private fun publicRelease(): Release {
-        val connection = URL("$RELEASES/latest").openConnection() as HttpURLConnection
-        connection.requestMethod = "HEAD"
-        connection.connectTimeout = 15000; connection.readTimeout = 15000
-        try {
-            check(connection.responseCode == 200)
-            val prefix = "$RELEASES/tag/"
-            val destination = connection.url.toString()
-            require(destination.startsWith(prefix))
-            val tag = destination.removePrefix(prefix)
-            require(Regex("v?[0-9]+\\.[0-9]+\\.[0-9]+(?:-[A-Za-z0-9.-]+)?").matches(tag))
-            val version = tag.removePrefix("v")
-            return Release(tag, "", "$RELEASES/download/$tag/AmneziaWG-MN-$version-arm64.apk")
-        } finally { connection.disconnect() }
+    override fun onResume() { super.onResume(); refreshNotifications() }
+    private fun askNotifications() {
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            UpdateScheduler.prefs(requireContext()).edit().putBoolean("notification_asked", true).apply()
+            permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
-
+    private fun refreshNotifications() {
+        if (::notificationHint.isInitialized) notificationHint.visibility = if (NotificationManagerCompat.from(requireContext()).areNotificationsEnabled()) View.GONE else View.VISIBLE
+    }
     private fun checkRelease() {
-        check.isEnabled = false
-        status.setText(R.string.mn_checking)
-        notes.text = ""
-        release = null
-        install.visibility = View.GONE
+        check.isEnabled = false; install.visibility = View.GONE; status.setText(R.string.mn_checking)
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) {
-                  try {
-                    val connection = URL(API).openConnection() as HttpURLConnection
-                    connection.connectTimeout = 15000; connection.readTimeout = 15000
-                    connection.setRequestProperty("Accept", "application/vnd.github+json")
-                    connection.setRequestProperty("User-Agent", "amneziaWG-MN/${BuildConfig.VERSION_NAME}")
-                    try {
-                        if (connection.responseCode == 404) return@withContext null
-                        check(connection.responseCode == 200)
-                        val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-                        val assets = json.getJSONArray("assets")
-                        var apk: String? = null
-                        for (i in 0 until assets.length()) {
-                            val asset = assets.getJSONObject(i)
-                            val name = asset.getString("name").lowercase()
-                            if (name.endsWith(".apk") && ("arm64" in name || "universal" in name)) {
-                                val url = asset.getString("browser_download_url")
-                                if (url.startsWith("$RELEASES/download/")) { apk = url; break }
-                            }
-                        }
-                        if (apk == null) return@withContext null
-                        Release(json.getString("tag_name"), json.optString("body"), apk)
-                    } finally { connection.disconnect() }
-                  } catch (cancelled: CancellationException) { throw cancelled }
-                    catch (_: Exception) { publicRelease() }
-                }
-                release = result
-                if (result == null) {
-                    status.setText(R.string.mn_unavailable); notes.text = ""
-                } else {
-                    notes.text = result.notes.take(12000)
-                    val current = result.tag.removePrefix("v") == BuildConfig.VERSION_NAME
-                    status.text = if (current) getString(R.string.mn_current) else getString(R.string.mn_available, result.tag)
-                    install.visibility = if (current) View.GONE else View.VISIBLE
+                release = withContext(Dispatchers.IO) { UpdateRepository.latest() }
+                val chosen = release!!
+                if (!UpdateRepository.newer(chosen)) status.setText(R.string.mn_current)
+                else {
+                    val ready = withContext(Dispatchers.IO) { UpdateRepository.valid(requireContext()) && UpdateScheduler.prefs(requireContext()).getString("downloaded", null) == chosen.tag }
+                    status.text = getString(if (ready) R.string.mn_auto_ready_body else R.string.mn_available, chosen.version)
+                    install.setText(if (ready) R.string.mn_auto_install else R.string.mn_install)
+                    install.visibility = View.VISIBLE
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
-              catch (_: Exception) { status.setText(R.string.mn_update_error) }
-            finally { check.isEnabled = true }
+              catch (_: Exception) {
+                status.setText(R.string.mn_update_error)
+                if (withContext(Dispatchers.IO) { UpdateRepository.valid(requireContext()) }) {
+                    install.setText(R.string.mn_auto_install); install.visibility = View.VISIBLE
+                }
+            } finally { check.isEnabled = true }
         }
     }
-
-    @Suppress("DEPRECATION")
-    private fun downloadAndInstall() {
-        val chosen = release ?: return
-        val context = requireContext()
-        if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
-            status.setText(R.string.mn_installer_permission)
-            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
-            return
-        }
+    private fun downloadOrInstall() {
         install.isEnabled = false; check.isEnabled = false
-        status.setText(R.string.mn_downloading)
+        val context = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val apk = withContext(Dispatchers.IO) {
-                    val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-                    val temp = File(dir, "update.part")
-                    val target = File(dir, "update.apk")
-                    val connection = URL(chosen.apk).openConnection() as HttpURLConnection
-                    connection.connectTimeout = 15000; connection.readTimeout = 30000
-                    try {
-                        check(connection.responseCode == 200)
-                        connection.inputStream.use { input -> temp.outputStream().use { output ->
-                            val buffer = ByteArray(32768); var total = 0L
-                            while (true) { val count = input.read(buffer); if (count < 0) break
-                                total += count; check(total <= 128L * 1024 * 1024); output.write(buffer, 0, count) }
-                        } }
-                        val pm = context.packageManager
-                        val archive = pm.getPackageArchiveInfo(temp.path, PackageManager.GET_SIGNATURES) ?: error("Invalid APK")
-                        val installed = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
-                        fun fingerprints(info: android.content.pm.PackageInfo) = info.signatures?.map {
-                            MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).joinToString("") { b -> "%02x".format(b) }
-                        }?.sorted()
-                        val incomingCode = if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode else archive.versionCode.toLong()
-                        val currentCode = if (Build.VERSION.SDK_INT >= 28) installed.longVersionCode else installed.versionCode.toLong()
-                        require(UpdatePolicy.accepts(context.packageName, currentCode, fingerprints(installed),
-                            archive.packageName, incomingCode, fingerprints(archive)))
-                        check(temp.renameTo(target)); target
-                    } finally { connection.disconnect(); temp.delete() }
+                withContext(Dispatchers.IO) {
+                    val chosen = release
+                    if (chosen != null && UpdateRepository.newer(chosen)) UpdateRepository.download(context, chosen)
+                    require(UpdateRepository.valid(context))
                 }
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.updates", apk)
-                startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
-                status.text = getString(R.string.mn_available, chosen.tag)
-            } catch (_: IllegalArgumentException) { status.setText(R.string.mn_bad_apk) }
+                startActivity(Intent(requireContext(), UpdateInstallActivity::class.java))
+            } catch (cancelled: CancellationException) { throw cancelled }
               catch (_: Exception) { status.setText(R.string.mn_update_error) }
             finally { install.isEnabled = true; check.isEnabled = true }
         }
-    }
-
-    companion object {
-        private const val RELEASES = "https://github.com/artemvarlapov2005/amneziaWG-MN/releases"
-        private const val API = "https://api.github.com/repos/artemvarlapov2005/amneziaWG-MN/releases/latest"
     }
 }

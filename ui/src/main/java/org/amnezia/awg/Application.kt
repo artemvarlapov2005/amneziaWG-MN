@@ -91,6 +91,7 @@ class Application : android.app.Application() {
     override fun onCreate() {
         Log.i(TAG, USER_AGENT)
         super.onCreate()
+        org.amnezia.awg.updater.UpdateScheduler.schedule(this)
         DynamicColors.applyToActivitiesIfAvailable(this)
         rootShell = RootShell(applicationContext)
         toolsInstaller = ToolsInstaller(applicationContext, rootShell)

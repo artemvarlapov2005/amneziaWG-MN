@@ -1,0 +1,14 @@
+<resources>
+<string name="mn_auto_enable">Автоматически скачивать обновления</string>
+<string name="mn_auto_interval">Проверять обновления</string>
+<string-array name="mn_auto_intervals"><item>Раз в 15 минут</item><item>Раз в час</item><item>Раз в 6 часов</item><item>Раз в 12 часов</item><item>Раз в сутки</item></string-array>
+<string name="mn_auto_explanation">Включено по умолчанию. Новая APK скачивается через доступное подключение, включая мобильный интернет. Android может отложить проверку для экономии батареи. Установка — только с вашим подтверждением.</string>
+<string name="mn_auto_notifications">Разрешить уведомления об обновлениях</string>
+<string name="mn_auto_channel">Обновления приложения</string>
+<string name="mn_auto_ready_title">Обновление скачано</string>
+<string name="mn_auto_ready_body">Версия %1$s готова к установке</string>
+<string name="mn_auto_install">Установить</string>
+<string name="mn_auto_later">Позже</string>
+<string name="mn_auto_no_file">Нет готового обновления. Возможно, оно уже установлено. Проверьте обновления в приложении.</string>
+<string name="mn_auto_confirm">Подтвердите установку в системном окне Android.</string>
+</resources>

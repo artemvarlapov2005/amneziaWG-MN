@@ -10,6 +10,7 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.google.android.material.color.MaterialColors
@@ -20,6 +21,8 @@ class MnBottomBar @JvmOverloads constructor(context: Context, attrs: AttributeSe
     data class Item(val itemId: Int)
     private data class Tab(val id: Int, val root: LinearLayout, val icon: ImageView, val label: TextView)
     private val tabs = mutableListOf<Tab>()
+    private var updateDot: View? = null
+    fun showUpdateBadge(show: Boolean) { updateDot?.visibility = if (show) View.VISIBLE else View.GONE }
     private var listener: ((Item) -> Boolean)? = null
     var selectedItemId: Int = R.id.tab_configs
         set(value) {
@@ -55,7 +58,17 @@ class MnBottomBar @JvmOverloads constructor(context: Context, attrs: AttributeSe
             setSingleLine(); includeFontPadding = false
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
-        box.addView(icon, LayoutParams(dp(24), dp(24)))
+        val iconFrame = FrameLayout(context)
+        iconFrame.addView(icon, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
+        if (id == R.id.tab_updates) {
+            updateDot = View(context).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0xffef5350.toInt()) }
+                visibility = View.GONE
+                contentDescription = context.getString(R.string.mn_auto_ready_title)
+            }
+            iconFrame.addView(updateDot, FrameLayout.LayoutParams(dp(8), dp(8), Gravity.TOP or Gravity.END))
+        }
+        box.addView(iconFrame, LayoutParams(dp(28), dp(26)))
         box.addView(label, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(3) })
         addView(box, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
         tabs.add(Tab(id, box, icon, label))
