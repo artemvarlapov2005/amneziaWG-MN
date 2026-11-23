@@ -19,7 +19,8 @@ class UpdateJobService : JobService() {
                     ensureActive()
                     if (UpdateScheduler.enabled(this@UpdateJobService) && UpdateRepository.current(this@UpdateJobService, result.snapshot)) UpdateScheduler.notifyReady(this@UpdateJobService)
                 } ?: UpdateRepository.discardInvalid(this@UpdateJobService)
-            } catch (_: UpdateRepository.ChannelChangedException) { }
+            } catch (_: RoutedUpdateTransfer.TransferAbortedException) { }
+              catch (_: UpdateRepository.ChannelChangedException) { }
               catch (cancelled: CancellationException) { throw cancelled }
               catch (_: IllegalArgumentException) { }
               catch (_: Exception) { retry = true }

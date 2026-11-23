@@ -23,6 +23,9 @@ object UpdateRepository {
     class ChannelChangedException : IOException("Update channel changed")
     data class Selection(val snapshot: ChannelGate.Snapshot, val candidate: ChannelRelease?, val waitingForStable: Boolean)
     private val downloadLock = Mutex()
+    val downloadProgress = UpdateDownloadProgress()
+    private var downloadHandle: UpdateTransfer.Handle? = null
+    private val abortedDownloads = ConcurrentHashMap.newKeySet<String>()
     private val initializing = Any()
     @Volatile private var channelGate: ChannelGate? = null
     private val transfers = ConcurrentHashMap.newKeySet<UpdateTransfer.Handle>()
@@ -71,26 +74,37 @@ object UpdateRepository {
     private fun pending(c: Context): ChannelRelease? = try {
         UpdateScheduler.prefs(c).getString("pending_release", null)?.let { val json = JSONObject(it); decode(json.getString("channel"), json) }
     } catch (_: Exception) { null }
-    private suspend fun await(c: Context, s: ChannelGate.Snapshot, transfer: UpdateTransfer.Handle, timeout: Long) {
-        try { runInterruptible { transfer.await(timeout) } }
-        catch (e: CancellationException) {
-            currentCoroutineContext().ensureActive()
+    private suspend fun fetch(c: Context, s: ChannelGate.Snapshot, url: String, target: File, maxBytes: Long,
+                              catalog: Boolean, token: String? = null, progress: (Long, Long) -> Unit = { _, _ -> }) {
+        fun check() {
             requireCurrent(c, s)
-            throw e
+            if (token != null && token in abortedDownloads) throw RoutedUpdateTransfer.TransferAbortedException()
         }
-        requireCurrent(c, s)
+        RoutedUpdateTransfer.fetch(URL(url), target, maxBytes, if (catalog) 20000 else 120000,
+            if (catalog) 8000 else 60000, if (catalog) 6000 else 15000,
+            routes = { AndroidUpdateRoutes.available(c) }, checkCurrent = { check() },
+            registered = { handle -> synchronized(gate(c)) { check(); transfers.add(handle); if (token != null) downloadHandle = handle } },
+            removed = { handle -> synchronized(gate(c)) { transfers.remove(handle); if (downloadHandle === handle) downloadHandle = null } },
+            onRoute = { label, attempt ->
+                if (token != null) downloadProgress.route(token, label, attempt)
+                android.util.Log.i("AmneziaWG/Updates", "${if (catalog) "Catalog" else "APK"} route=$label attempt=$attempt")
+            }, progress = progress,
+            onFailure = { label, failure -> android.util.Log.i("AmneziaWG/Updates", "Route failed: $label (${failure.javaClass.simpleName})") })
+    }
+    fun cancelDownload(c: Context, artifact: String?, expected: ChannelGate.Snapshot) {
+        synchronized(gate(c)) {
+            if (!current(c, expected)) return
+            val active = downloadProgress.state.value ?: return
+            if (active.artifact == artifact && active.generation == expected.generation) {
+                abortedDownloads.add(active.token); downloadHandle?.cancel()
+            }
+        }
     }
     suspend fun latest(c: Context): Selection {
         val s = snapshot(c)
         val temp = File(c.cacheDir, "channels-${UUID.randomUUID()}.json")
-        val handle: UpdateTransfer.Handle
-        synchronized(gate(c)) {
-            requireCurrent(c, s)
-            handle = UpdateTransfer.startLimited(URL(CATALOG), temp, 256L * 1024) { _, _ -> }
-            transfers.add(handle)
-        }
         try {
-            await(c, s, handle, 20000)
+            fetch(c, s, CATALOG, temp, 256L * 1024, true)
             currentCoroutineContext().ensureActive()
             val json = JSONObject(temp.readText(Charsets.UTF_8))
             require(json.get("schemaVersion") == 1) { "Unsupported update catalog" }
@@ -100,7 +114,7 @@ object UpdateRepository {
             val chosen = ChannelRelease.select(s.channel, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toLong(), stable, beta)
             requireCurrent(c, s)
             return Selection(s, chosen, s.channel == "stable" && UpdateVersion.isBeta(BuildConfig.VERSION_NAME) && chosen == null)
-        } finally { transfers.remove(handle); handle.cancel(); temp.delete() }
+        } finally { temp.delete() }
     }
     fun file(c: Context) = File(c.filesDir, "updates/update.apk")
     fun sha256(file: File): String {
@@ -140,26 +154,27 @@ object UpdateRepository {
         synchronized(g) {
             requireCurrent(c, expected)
             require(eligible(c, release))
-            if (pending(c)?.sha256 == release.sha256 && valid(c)) return@withLock target
+            val cached = pending(c)
+            if (cached != null && valid(c) && (cached.sha256 == release.sha256 ||
+                    (UpdateVersion.compare(cached.versionName, release.versionName) >= 0 && cached.versionCode >= release.versionCode))) return@withLock target
             discardLocked(c)
         }
         target.parentFile!!.mkdirs()
         val part = File(target.parentFile, "update-${UUID.randomUUID()}.part")
-        val transfer: UpdateTransfer.Handle
-        synchronized(g) {
-            requireCurrent(c, expected)
-            transfer = UpdateTransfer.start(URL(release.apkUrl), part) { bytes, total -> progress(bytes, total) }
-            transfers.add(transfer)
-        }
+        val token = downloadProgress.begin(release.sha256, expected.generation)
         try {
-            await(c, expected, transfer, 120000)
+            fetch(c, expected, release.apkUrl, part, 128L * 1024 * 1024, false, token) { bytes, total ->
+                downloadProgress.bytes(token, bytes, total); progress(bytes, total)
+            }
+            downloadProgress.verifying(token)
             currentCoroutineContext().ensureActive()
             require(verify(c, part, release)) { "APK does not match release metadata/signature" }
             if (!g.commit(expected) {
+                if (token in abortedDownloads) throw RoutedUpdateTransfer.TransferAbortedException()
                 check(part.renameTo(target))
                 UpdateScheduler.prefs(c).edit().putString("downloaded", release.tag).putString("pending_release", encode(release).toString()).apply()
             }) throw ChannelChangedException()
             target
-        } finally { transfers.remove(transfer); transfer.cancel(); part.delete() }
+        } finally { downloadProgress.finish(token); abortedDownloads.remove(token); part.delete() }
     }
 }

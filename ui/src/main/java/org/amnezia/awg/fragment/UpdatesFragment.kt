@@ -22,6 +22,7 @@ import android.graphics.drawable.GradientDrawable
 import android.content.res.ColorStateList
 import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 import org.amnezia.awg.BuildConfig
 import org.amnezia.awg.R
 import org.amnezia.awg.updater.*
@@ -66,7 +67,10 @@ class UpdatesFragment : Fragment() {
         install = button(R.string.mn_install).apply { visibility = View.GONE; setOnClickListener { downloadOrInstall() } }
         cancel = button(R.string.mn_download_cancel).apply {
             visibility = View.GONE
-            setOnClickListener { downloadJob?.cancel() }
+            setOnClickListener {
+                UpdateRepository.cancelDownload(requireContext(), release?.sha256, selection ?: UpdateRepository.snapshot(requireContext()))
+                downloadJob?.cancel()
+            }
         }
         val auto = SwitchMaterial(context).apply {
             setText(R.string.mn_auto_enable); isChecked = UpdateScheduler.enabled(context)
@@ -196,27 +200,37 @@ class UpdatesFragment : Fragment() {
         cancel.visibility = View.VISIBLE
         status.setText(R.string.mn_downloading)
         val context = requireContext().applicationContext
-        val owner = viewLifecycleOwner
         val expected = selection ?: UpdateRepository.snapshot(context)
         val chosen = release
         downloadJob = viewLifecycleOwner.lifecycleScope.launch {
             val operation = coroutineContext[Job]
-            try {
-                withTimeout(130000) { withContext(Dispatchers.IO) {
-                    if (chosen != null) UpdateRepository.download(context, chosen, expected) { bytes, total ->
-                        owner.lifecycleScope.launch(Dispatchers.Main) {
-                            if (operation?.isActive == true && UpdateRepository.current(context, expected)) {
-                                val mb = String.format(Locale.getDefault(), "%.1f", bytes / 1048576.0)
-                                status.text = if (total > 0) getString(R.string.mn_download_progress, mb,
-                                    String.format(Locale.getDefault(), "%.1f", total / 1048576.0), (bytes * 100 / total).toInt())
+            val observer = launch {
+                UpdateRepository.downloadProgress.state.collect { active ->
+                    if (!UpdateRepository.current(context, expected) || operation?.isActive != true) return@collect
+                    if (active == null || (chosen != null && active.artifact != chosen.sha256)) {
+                        status.setText(R.string.mn_download_waiting)
+                    } else {
+                        status.text = when (active.phase) {
+                            UpdateDownloadProgress.Phase.CONNECTING -> if (active.route.isEmpty()) getString(R.string.mn_download_waiting) else getString(R.string.mn_download_connecting, active.route, active.attempt)
+                            UpdateDownloadProgress.Phase.VERIFYING -> getString(R.string.mn_download_verifying)
+                            UpdateDownloadProgress.Phase.DOWNLOADING -> {
+                                val mb = String.format(Locale.getDefault(), "%.1f", active.bytes / 1048576.0)
+                                if (active.total > 0) getString(R.string.mn_download_progress, mb,
+                                    String.format(Locale.getDefault(), "%.1f", active.total / 1048576.0), (active.bytes * 100 / active.total).toInt())
                                 else getString(R.string.mn_download_bytes, mb)
                             }
                         }
                     }
+                }
+            }
+            try {
+                withTimeout(130000) { withContext(Dispatchers.IO) {
+                    if (chosen != null) UpdateRepository.download(context, chosen, expected)
                     require(UpdateRepository.valid(context))
                 } }
                 if (UpdateRepository.current(context, expected)) startActivity(Intent(requireContext(), UpdateInstallActivity::class.java))
-            } catch (_: UpdateRepository.ChannelChangedException) { }
+            } catch (_: RoutedUpdateTransfer.TransferAbortedException) { if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_cancelled) }
+              catch (_: UpdateRepository.ChannelChangedException) { }
               catch (_: TimeoutCancellationException) { if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_timeout) }
               catch (cancelled: CancellationException) {
                 if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_cancelled)
@@ -225,6 +239,7 @@ class UpdatesFragment : Fragment() {
               catch (_: java.net.SocketTimeoutException) { if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_timeout) }
               catch (_: Exception) { if (UpdateRepository.current(context, expected)) status.setText(R.string.mn_download_failed) }
             finally {
+                observer.cancel()
                 if (UpdateRepository.current(context, expected)) { install.isEnabled = true; check.isEnabled = true; cancel.visibility = View.GONE }
             }
         }

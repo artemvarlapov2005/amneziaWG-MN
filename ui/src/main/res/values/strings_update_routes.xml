@@ -1,0 +1,9 @@
+<resources>
+<string name="mn_update_route_vpn">VPN</string>
+<string name="mn_update_route_wifi">Wi-Fi напрямую</string>
+<string name="mn_update_route_mobile">Мобильная сеть напрямую</string>
+<string name="mn_update_route_system">Текущая сеть</string>
+<string name="mn_download_waiting">Подготовка или ожидание текущей загрузки…</string>
+<string name="mn_download_connecting">Соединение: %1$s. Попытка %2$d…</string>
+<string name="mn_download_verifying">APK скачана. Проверяем подпись и контрольную сумму…</string>
+</resources>

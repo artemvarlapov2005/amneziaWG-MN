@@ -70,3 +70,13 @@ Channel implementation validation: release build, 20 selected JVM updater tests 
 On a dedicated Android test device/emulator verify beta.1 → beta.2 → final, Stable filtering, beta opt-out waiting, and switching channels during download/install-permission flow. Exercise notification dismissal, Install/Later, badge clearing, cancellation, offline/catalog errors, wrong hash and wrong certificate. Use a test device, not an ADB installation on the user's phone.
 
 The earlier patched ARM64 engine was installed/launched on HONOR LDY-AN00 / Android 17; a JVM harness showed 10/10 orphaned mock engines before serialization and 0/10 after it. This is not a full Android lifecycle reproduction or long-term stability guarantee. Upstream tunnel tests have two known unchanged parser failures (`INVALID_NUMBER`, `SYNTAX_ERROR`); do not describe the full repository suite as passing.
+
+## Beta 1.4.0-beta.1: automatic update network fallback
+
+This beta (build 25) binds each update HTTPS connection to an available Android Network. It tries the active network first, then available VPN/Wi-Fi/cellular routes. Each request has its own network binding; the updater never calls bindProcessToNetwork, changes tunnel state, enables allowBypass globally, or changes other apps' routes. Android access/lockdown restrictions still apply: a denied network attempt fails normally and the next available route is tried. No TLS verification is disabled.
+
+Catalog checks keep a 20-second total limit (8 seconds per route, 6 seconds without activity). APK transfers keep a 120-second total limit (60 seconds per route, 15 seconds without activity). A second pass refreshes network identities after a handover. Each attempt uses its own partial file. The downloader still verifies metadata/hash/signature after receiving the complete file.
+
+Foreground and JobScheduler downloads now share progress. A manual waiter sees an ongoing background APK's bytes instead of an opaque mutex wait; the UI shows connection route/attempt, byte progress and verification phases. Cancel also cancels the matching shared background transfer. Old/cancelled progress tokens cannot overwrite a newer attempt. An already cached newer compatible APK is not replaced by an older request.
+
+JVM tests reproduce failed/stalled route fallback in both directions, network refresh, cancellation, channel invalidation and background progress visibility. The actual Android VPN/direct-network behavior must be validated through this opt-in Beta; no ADB installation is made on the user's phone. Stable remains 1.3.0 until that validation.
