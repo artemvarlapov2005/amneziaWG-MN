@@ -29,8 +29,10 @@ object RoutedUpdateTransfer {
                 val part = File(target.parentFile, "route-${UUID.randomUUID()}.part")
                 onRoute(route.label, ++attempt)
                 var handle: UpdateTransfer.Handle? = null
+                val progressGuard = Any()
+                var acceptingProgress = true
                 try {
-                    val active = UpdateTransfer.startVia(url, part, maxBytes, { bytes, total -> progress(bytes, total) }, route.open)
+                    val active = UpdateTransfer.startVia(url, part, maxBytes, { bytes, total -> synchronized(progressGuard) { if (acceptingProgress) progress(bytes, total) } }, route.open)
                     handle = active
                     registered(active)
                     runInterruptible { active.awaitResponsive(minOf(left, perRouteMs), stallMs) }
@@ -42,6 +44,7 @@ object RoutedUpdateTransfer {
                 } catch (failure: Exception) {
                     currentCoroutineContext().ensureActive(); checkCurrent(); last = failure; onFailure(route.label, failure)
                 } finally {
+                    synchronized(progressGuard) { acceptingProgress = false }
                     handle?.let { removed(it); it.cancel() }
                     part.delete()
                 }

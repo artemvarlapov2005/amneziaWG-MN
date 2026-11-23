@@ -123,4 +123,34 @@ class RoutedUpdateTransferTest {
         assertEquals(fresh,tracker.state.value!!.token)
         tracker.bytes(fresh,3,8); assertEquals(3L,tracker.state.value!!.bytes)
     }
+    @Test fun lateBytesFromCancelledRouteCannotOverwriteNewRouteProgress() = runBlocking {
+        val dir = Files.createTempDirectory("route-late-bytes").toFile()
+        val directStarted = java.util.concurrent.CountDownLatch(1)
+        val oldClosed = java.util.concurrent.CountDownLatch(1)
+        try {
+            val currentRoute = java.util.concurrent.atomic.AtomicReference("")
+            val updates = java.util.Collections.synchronizedList(mutableListOf<Pair<String,Long>>())
+            val old = RoutedUpdateTransfer.Route("vpn","vpn", UpdateTransfer.ConnectionFactory {
+                connection(object : InputStream() {
+                    var sent = false
+                    override fun read(): Int {
+                        if (sent) return -1
+                        while (directStarted.count > 0) { try { directStarted.await(100,java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { } }
+                        sent = true; return 1
+                    }
+                    override fun close() { oldClosed.countDown() }
+                })
+            })
+            val direct = RoutedUpdateTransfer.Route("direct","direct", UpdateTransfer.ConnectionFactory {
+                directStarted.countDown(); connection(ByteArrayInputStream("test-apk".toByteArray()))
+            })
+            RoutedUpdateTransfer.fetch(url, File(dir,"result"), 1024, 3000, 1000, 100,
+                { listOf(old,direct) }, { }, { }, { }, { name, _ -> currentRoute.set(name) },
+                { bytes, _ -> updates.add(currentRoute.get() to bytes) })
+            assertTrue(oldClosed.await(1000,java.util.concurrent.TimeUnit.MILLISECONDS))
+            assertFalse(updates.any { it.first == "direct" && it.second == 1L })
+            assertEquals("test-apk",File(dir,"result").readText())
+        } finally { directStarted.countDown(); dir.deleteRecursively() }
+    }
+
 }
