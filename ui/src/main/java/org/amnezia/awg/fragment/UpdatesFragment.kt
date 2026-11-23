@@ -207,7 +207,7 @@ class UpdatesFragment : Fragment() {
             val observer = launch {
                 UpdateRepository.downloadProgress.state.collect { active ->
                     if (!UpdateRepository.current(context, expected) || operation?.isActive != true) return@collect
-                    if (active == null || (chosen != null && active.artifact != chosen.sha256)) {
+                    if (active == null || active.generation != expected.generation || (chosen != null && active.artifact != chosen.sha256)) {
                         status.setText(R.string.mn_download_waiting)
                     } else {
                         status.text = when (active.phase) {
