@@ -19,6 +19,8 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import androidx.appcompat.widget.AppCompatSpinner
 import androidx.appcompat.view.ContextThemeWrapper
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.StateListDrawable
 import android.content.res.ColorStateList
 import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.*
@@ -88,9 +90,18 @@ class UpdatesFragment : Fragment() {
             adapter = object : ArrayAdapter<String>(popupContext, android.R.layout.simple_spinner_dropdown_item, intervals) {
                 override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
                     return (super.getDropDownView(position, convertView, parent) as TextView).apply {
-                        setBackgroundResource(R.drawable.mn_spinner_selection)
                         val normal = MaterialColors.getColor(popupContext, com.google.android.material.R.attr.colorOnSurface, 0)
                         val selected = MaterialColors.getColor(popupContext, com.google.android.material.R.attr.colorOnSecondaryContainer, normal)
+                        // Resolve theme colors before constructing drawables. Some Android builds
+                        // inflate a Spinner selector without a Theme (theme=null), which crashes
+                        // when XML selector items contain ?attr/colorSecondaryContainer.
+                        val highlight = MaterialColors.getColor(popupContext, com.google.android.material.R.attr.colorSecondaryContainer, 0)
+                        background = StateListDrawable().apply {
+                            for (state in intArrayOf(android.R.attr.state_pressed, android.R.attr.state_selected, android.R.attr.state_focused, android.R.attr.state_activated)) {
+                                addState(intArrayOf(state), ColorDrawable(highlight))
+                            }
+                            addState(intArrayOf(), ColorDrawable(android.graphics.Color.TRANSPARENT))
+                        }
                         setTextColor(ColorStateList(arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf(android.R.attr.state_selected), intArrayOf(android.R.attr.state_focused), intArrayOf(android.R.attr.state_activated), intArrayOf()), intArrayOf(selected, selected, selected, selected, normal)))
                     }
                 }
