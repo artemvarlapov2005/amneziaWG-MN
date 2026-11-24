@@ -71,6 +71,12 @@ On a dedicated Android test device/emulator verify beta.1 → beta.2 → final, 
 
 The earlier patched ARM64 engine was installed/launched on HONOR LDY-AN00 / Android 17; a JVM harness showed 10/10 orphaned mock engines before serialization and 0/10 after it. This is not a full Android lifecycle reproduction or long-term stability guarantee. Upstream tunnel tests have two known unchanged parser failures (`INVALID_NUMBER`, `SYNTAX_ERROR`); do not describe the full repository suite as passing.
 
+## Device check before Beta
+
+Before publishing a public Beta or changing the Beta catalog, test the changed user flows on an Android device. For Quick Tunnel, verify the “+” menu, paste from the clipboard, successful import of a fresh test invite, and a connection using the imported test profile. Check that a redeemed invite cannot create a second profile. An APK build and server tests do not substitute for the device check.
+
+Use an authenticated GitHub release draft to deliver a separate QA package to the owner's phone. Publish a release for the normal app package only after the device check passes.
+
 ## 1.4.0: automatic update network fallback
 
 This beta (build 25) binds each update HTTPS connection to an available Android Network. It tries the active network first, then available VPN/Wi-Fi/cellular routes. Each request has its own network binding; the updater never calls bindProcessToNetwork, changes tunnel state, enables allowBypass globally, or changes other apps' routes. Android access/lockdown restrictions still apply: a denied network attempt fails normally and the next available route is tried. No TLS verification is disabled.
