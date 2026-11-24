@@ -16,4 +16,5 @@
     <string name="qtun_validating">Проверяем профиль…</string>
     <string name="qtun_saving">Сохраняем профиль…</string>
     <string name="qtun_confirming">Подтверждаем импорт…</string>
+    <string name="qtun_already_used">Эта ссылка уже использована. Для повторного импорта нужна новая ссылка.</string>
 </resources>

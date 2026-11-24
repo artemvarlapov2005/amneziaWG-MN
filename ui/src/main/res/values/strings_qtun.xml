@@ -16,4 +16,5 @@
     <string name="qtun_validating">Checking profile…</string>
     <string name="qtun_saving">Saving profile…</string>
     <string name="qtun_confirming">Confirming import…</string>
+    <string name="qtun_already_used">This link has already been used. Get a new link to import the profile again.</string>
 </resources>

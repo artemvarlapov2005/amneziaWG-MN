@@ -132,7 +132,7 @@ class QuickTunnelActivity : AppCompatActivity() {
         var stage = "prepare"
         try {
             if (prefs.getBoolean("$key.complete", false)) {
-                report(R.string.qtun_saved)
+                showStatus(R.string.qtun_already_used)
                 return@withLock
             }
             val attempt = prefs.getString("$key.attempt", null) ?: newSecret()
