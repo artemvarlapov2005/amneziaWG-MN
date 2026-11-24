@@ -9,11 +9,11 @@
     "notes": "Стабильная 1.4.0: загрузчик автоматически пробует VPN и прямые сети, показывает прогресс и поддерживает отмену. Исправлено падение списка интервалов на Android/HONOR. Сохранены фоновые обновления, каналы Stable/Beta и маршрутизация приложений. Сборка 27, прежняя подпись, конфиги сохраняются.\n"
   },
   "beta": {
-    "tag": "1.4.0-beta.2",
-    "versionName": "1.4.0-beta.2",
-    "versionCode": 26,
-    "apkUrl": "https://github.com/artemvarlapov2005/amneziaWG-MN/releases/download/1.4.0-beta.2/AmneziaWG-MN-1.4.0-beta.2-arm64.apk",
-    "sha256": "d858e707c6f8cca2ebda4cb96cb4aa6e2b52428c957976a19925b163d7446dfa",
-    "notes": "Исправлено падение при открытии списка интервалов проверки обновлений на Android/HONOR. Цвета фона разрешаются заранее, без загрузки XML-селектора с отсутствующей темой. Выпадающий список сохранён.\n"
+    "tag": "1.5.0-beta.1",
+    "versionName": "1.5.0-beta.1",
+    "versionCode": 28,
+    "apkUrl": "https://github.com/artemvarlapov2005/amneziaWG-MN/releases/download/1.5.0-beta.1/AmneziaWG-MN-1.5.0-beta.1-arm64.apk",
+    "sha256": "d92151cb2f3155119fa09dcd0a5555ae13a167627b58a418d8a1ed4e577c5caa",
+    "notes": "Quick Tunnel: скопируйте одноразовую ссылку qtun:// и выберите «+» → «Вставить из буфера обмена (qtun)». Приложение скачивает готовый AmneziaWG-профиль по HTTPS и добавляет его после подтверждения.\n"
   }
 }
