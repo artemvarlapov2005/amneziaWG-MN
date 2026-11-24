@@ -1,0 +1,14 @@
+<resources>
+    <string name="qtun_paste">Вставить из буфера обмена (qtun)</string>
+    <string name="qtun_clipboard_empty">В буфере обмена нет ссылки Quick Tunnel</string>
+    <string name="qtun_import">Импорт из ссылки Quick Tunnel</string>
+    <string name="qtun_name">Имя туннеля</string>
+    <string name="qtun_confirm">Получить готовый VPN-профиль с %1$s?</string>
+    <string name="qtun_add">Импортировать</string>
+    <string name="qtun_invalid">Недопустимая ссылка Quick Tunnel</string>
+    <string name="qtun_unavailable">Ссылка недоступна или истекла</string>
+    <string name="qtun_failed">Импорт не удался. Открой ссылку снова для повтора.</string>
+    <string name="qtun_saved">VPN-профиль импортирован</string>
+    <string name="qtun_saved_retry">Профиль сохранён. Открой ссылку снова, чтобы подтвердить импорт.</string>
+    <string name="qtun_name_taken">Туннель с таким именем уже есть. Повтори импорт с другим именем.</string>
+</resources>

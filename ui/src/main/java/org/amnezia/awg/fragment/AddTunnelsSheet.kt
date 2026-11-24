@@ -64,6 +64,10 @@ class AddTunnelsSheet : BottomSheetDialogFragment() {
                     dismiss()
                     onRequestCreateConfig()
                 }
+                dialog.findViewById<View>(R.id.create_from_quick_tunnel)?.setOnClickListener {
+                    dismiss()
+                    setFragmentResult(REQUEST_KEY_NEW_TUNNEL, bundleOf(REQUEST_METHOD to REQUEST_QUICK_TUNNEL))
+                }
                 dialog.findViewById<View>(R.id.create_from_file)?.setOnClickListener {
                     dismiss()
                     onRequestImportConfig()
@@ -102,6 +106,7 @@ class AddTunnelsSheet : BottomSheetDialogFragment() {
         const val REQUEST_METHOD = "request_method"
         const val REQUEST_CREATE = "request_create"
         const val REQUEST_IMPORT = "request_import"
+        const val REQUEST_QUICK_TUNNEL = "request_quick_tunnel"
         const val REQUEST_SCAN = "request_scan"
     }
 }

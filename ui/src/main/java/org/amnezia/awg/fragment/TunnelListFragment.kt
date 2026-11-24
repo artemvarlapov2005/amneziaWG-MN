@@ -28,6 +28,7 @@ import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import org.amnezia.awg.Application
 import org.amnezia.awg.R
+import org.amnezia.awg.activity.QuickTunnelActivity
 import org.amnezia.awg.activity.TunnelCreatorActivity
 import org.amnezia.awg.databinding.ObservableKeyedRecyclerViewAdapter.RowConfigurationHandler
 import org.amnezia.awg.databinding.TunnelListFragmentBinding
@@ -103,6 +104,10 @@ class TunnelListFragment : BaseFragment() {
                     return@setOnClickListener
                 childFragmentManager.setFragmentResultListener(AddTunnelsSheet.REQUEST_KEY_NEW_TUNNEL, viewLifecycleOwner) { _, bundle ->
                     when (bundle.getString(AddTunnelsSheet.REQUEST_METHOD)) {
+                        AddTunnelsSheet.REQUEST_QUICK_TUNNEL -> {
+                            startActivity(Intent(requireContext(), QuickTunnelActivity::class.java))
+                        }
+
                         AddTunnelsSheet.REQUEST_CREATE -> {
                             startActivity(Intent(requireActivity(), TunnelCreatorActivity::class.java))
                         }

@@ -1,0 +1,14 @@
+<resources>
+    <string name="qtun_paste">Paste from clipboard (qtun)</string>
+    <string name="qtun_clipboard_empty">Clipboard has no Quick Tunnel link</string>
+    <string name="qtun_import">Import Quick Tunnel link</string>
+    <string name="qtun_name">Tunnel name</string>
+    <string name="qtun_confirm">Download an existing VPN profile from %1$s?</string>
+    <string name="qtun_add">Import</string>
+    <string name="qtun_invalid">Invalid Quick Tunnel link</string>
+    <string name="qtun_unavailable">The link is unavailable or expired</string>
+    <string name="qtun_failed">Could not import. Open the link again to retry.</string>
+    <string name="qtun_saved">VPN profile imported</string>
+    <string name="qtun_saved_retry">Profile saved. Open the link again to confirm the import.</string>
+    <string name="qtun_name_taken">A tunnel with that name already exists. Retry with a different name.</string>
+</resources>
