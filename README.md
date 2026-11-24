@@ -2,7 +2,7 @@
 
 Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-vpn/amneziawg-android), upstream commit `ff15093bf3856fea0947923474870b86efb682f0` (3.1.4). Upstream history, licenses and submodule pins are preserved. See [README.upstream.md](README.upstream.md).
 
-Current release: **1.3.0**, Android versionCode **24**, ARM64 / Android 7+. Package: `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**. The original app can remain installed separately; only one copy of a VPN profile should be active.
+Current release: **1.4.0**, Android versionCode **27**, ARM64 / Android 7+. Package: `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**. The original app can remain installed separately; only one copy of a VPN profile should be active.
 
 ## VPN and navigation
 
@@ -71,7 +71,7 @@ On a dedicated Android test device/emulator verify beta.1 → beta.2 → final, 
 
 The earlier patched ARM64 engine was installed/launched on HONOR LDY-AN00 / Android 17; a JVM harness showed 10/10 orphaned mock engines before serialization and 0/10 after it. This is not a full Android lifecycle reproduction or long-term stability guarantee. Upstream tunnel tests have two known unchanged parser failures (`INVALID_NUMBER`, `SYNTAX_ERROR`); do not describe the full repository suite as passing.
 
-## Beta 1.4.0-beta.1: automatic update network fallback
+## 1.4.0: automatic update network fallback
 
 This beta (build 25) binds each update HTTPS connection to an available Android Network. It tries the active network first, then available VPN/Wi-Fi/cellular routes. Each request has its own network binding; the updater never calls bindProcessToNetwork, changes tunnel state, enables allowBypass globally, or changes other apps' routes. Android access/lockdown restrictions still apply: a denied network attempt fails normally and the next available route is tried. No TLS verification is disabled.
 
@@ -79,4 +79,6 @@ Catalog checks keep a 20-second total limit (8 seconds per route, 6 seconds with
 
 Foreground and JobScheduler downloads now share progress. A manual waiter sees an ongoing background APK's bytes instead of an opaque mutex wait; the UI shows connection route/attempt, byte progress and verification phases. Cancel also cancels the matching shared background transfer. Old/cancelled progress tokens cannot overwrite a newer attempt. An already cached newer compatible APK is not replaced by an older request.
 
-JVM tests reproduce failed/stalled route fallback in both directions, network refresh, cancellation, channel invalidation and background progress visibility. The actual Android VPN/direct-network behavior must be validated through this opt-in Beta; no ADB installation is made on the user's phone. Stable remains 1.3.0 until that validation.
+JVM tests reproduce failed/stalled route fallback in both directions, network refresh, cancellation, channel invalidation and background progress visibility. This behavior was introduced in 1.4.0-beta.1 and promoted to Stable 1.4.0 at the owner's request. Actual Android VPN/direct-network behavior has not been verified by an automated device test; updates are delivered through Releases, without ADB installation.
+
+Stable 1.4.0 also includes the beta.2 interval-dropdown fix: selected-state colors are resolved before constructing drawables, avoiding a theme-less XML selector inflation crash confirmed in Android/HONOR crash reports.

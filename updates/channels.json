@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "stable": {
-    "tag": "1.3.0",
-    "versionName": "1.3.0",
-    "versionCode": 24,
-    "apkUrl": "https://github.com/artemvarlapov2005/amneziaWG-MN/releases/download/1.3.0/AmneziaWG-MN-1.3.0-arm64.apk",
-    "sha256": "9f4eada1a62baa75b488e7d99130b3bff225e669f12e82c343ed10173f63fe61",
-    "notes": "Каналы обновлений Stable и Beta. Stable выбран по умолчанию; Beta получает тестовые и стабильные версии. Возврат на Stable ожидает подходящего стабильного релиза без отката и потери конфигов. Исправлено сравнение beta.N; добавлена проверка метаданных и SHA-256 APK, защита при переключении канала. Настройки автообновлений сохраняются."
+    "tag": "1.4.0",
+    "versionName": "1.4.0",
+    "versionCode": 27,
+    "apkUrl": "https://github.com/artemvarlapov2005/amneziaWG-MN/releases/download/1.4.0/AmneziaWG-MN-1.4.0-arm64.apk",
+    "sha256": "f6c6bb21f4afa067be354e6107f73533401eb6ce89d5f512ccf1796b00d17ece",
+    "notes": "Стабильная 1.4.0: загрузчик автоматически пробует VPN и прямые сети, показывает прогресс и поддерживает отмену. Исправлено падение списка интервалов на Android/HONOR. Сохранены фоновые обновления, каналы Stable/Beta и маршрутизация приложений. Сборка 27, прежняя подпись, конфиги сохраняются.\n"
   },
   "beta": {
     "tag": "1.4.0-beta.2",
