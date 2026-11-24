@@ -9,11 +9,11 @@
     "notes": "Стабильная 1.4.0: загрузчик автоматически пробует VPN и прямые сети, показывает прогресс и поддерживает отмену. Исправлено падение списка интервалов на Android/HONOR. Сохранены фоновые обновления, каналы Stable/Beta и маршрутизация приложений. Сборка 27, прежняя подпись, конфиги сохраняются.\n"
   },
   "beta": {
-    "tag": "1.5.0-beta.2",
-    "versionName": "1.5.0-beta.2",
-    "versionCode": 29,
-    "apkUrl": "https://github.com/artemvarlapov2005/amneziaWG-MN/releases/download/1.5.0-beta.2/AmneziaWG-MN-1.5.0-beta.2-arm64.apk",
-    "sha256": "30a7f71768557beafb580b7d327b1ac351b8d9a4ccf882bf5e6be0b0e649d3fb",
-    "notes": "Quick Tunnel: обновлён экран импорта, добавлены этапы загрузки, проверки и сохранения. Исправлены отступы в меню «+». Импорт из буфера и повторную вставку проверили на Honor.\n"
+    "tag": "1.5.0-beta.3",
+    "versionName": "1.5.0-beta.3",
+    "versionCode": 30,
+    "apkUrl": "https://github.com/artemvarlapov2005/amneziaWG-MN/releases/download/1.5.0-beta.3/AmneziaWG-MN-1.5.0-beta.3-arm64.apk",
+    "sha256": "b26fa9ecf970031cacc52c624b69d5be83cf0bb844ef06de857a7ec6db834a3e",
+    "notes": "При повторной вставке использованной ссылки Quick Tunnel приложение оставляет экран импорта открытым и показывает сообщение «Эта ссылка уже использована». Первый импорт и повтор проверены на Honor.\n"
   }
 }
