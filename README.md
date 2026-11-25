@@ -2,7 +2,7 @@
 
 Personal Android client based on [AmneziaWG Android](https://github.com/amnezia-vpn/amneziawg-android), upstream commit `ff15093bf3856fea0947923474870b86efb682f0` (3.1.4). Upstream history, licenses and submodule pins are preserved. See [README.upstream.md](README.upstream.md).
 
-Current release: **1.4.0**, Android versionCode **27**, ARM64 / Android 7+. Package: `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**. The original app can remain installed separately; only one copy of a VPN profile should be active.
+Current release: **1.5.0**, Android versionCode **31**, ARM64 / Android 7+. Package: `org.amnezia.awg.patched`, labeled **AmneziaWG Fix**. The original app can remain installed separately; only one copy of a VPN profile should be active.
 
 ## VPN and navigation
 
